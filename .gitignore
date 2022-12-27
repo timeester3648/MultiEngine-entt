@@ -11,3 +11,9 @@ cpp.hint
 
 # Bazel
 /bazel-*
+
+# exclude project files
+**.sln
+**.vcxproj
+**.vcxproj.user
+**.vcxproj.filters
