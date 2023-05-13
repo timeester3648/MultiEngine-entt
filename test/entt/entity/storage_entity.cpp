@@ -45,7 +45,7 @@ TEST(StorageEntity, Functionalities) {
 
 ENTT_DEBUG_TEST(StorageEntityDeathTest, Get) {
     entt::storage<entt::entity> pool;
-    pool.spawn(entt::entity{99});
+    pool.emplace(entt::entity{99});
 
     ASSERT_DEATH(pool.get(entt::entity{3}), "");
     ASSERT_DEATH([[maybe_unused]] auto tup = pool.get_as_tuple(entt::entity{3}), "");
@@ -187,18 +187,18 @@ TEST(StorageEntity, Push) {
     ASSERT_EQ(*pool.push(entt::null), entt::entity{7});
 }
 
-TEST(StorageEntity, Spawn) {
+TEST(StorageEntity, Emplace) {
     using traits_type = entt::entt_traits<entt::entity>;
 
     entt::storage<entt::entity> pool;
     entt::entity entities[2u]{};
 
-    ASSERT_EQ(pool.spawn(), entt::entity{0});
-    ASSERT_EQ(pool.spawn(entt::null), entt::entity{1});
-    ASSERT_EQ(pool.spawn(entt::tombstone), entt::entity{2});
-    ASSERT_EQ(pool.spawn(entt::entity{0}), entt::entity{3});
-    ASSERT_EQ(pool.spawn(traits_type::construct(1, 1)), entt::entity{4});
-    ASSERT_EQ(pool.spawn(traits_type::construct(6, 3)), traits_type::construct(6, 3));
+    ASSERT_EQ(pool.emplace(), entt::entity{0});
+    ASSERT_EQ(pool.emplace(entt::null), entt::entity{1});
+    ASSERT_EQ(pool.emplace(entt::tombstone), entt::entity{2});
+    ASSERT_EQ(pool.emplace(entt::entity{0}), entt::entity{3});
+    ASSERT_EQ(pool.emplace(traits_type::construct(1, 1)), entt::entity{4});
+    ASSERT_EQ(pool.emplace(traits_type::construct(6, 3)), traits_type::construct(6, 3));
 
     ASSERT_LT(pool.index(entt::entity{0}), pool.in_use());
     ASSERT_LT(pool.index(entt::entity{1}), pool.in_use());
@@ -208,18 +208,69 @@ TEST(StorageEntity, Spawn) {
     ASSERT_GE(pool.index(entt::entity{5}), pool.in_use());
     ASSERT_LT(pool.index(traits_type::construct(6, 3)), pool.in_use());
 
-    ASSERT_EQ(pool.spawn(traits_type::construct(5, 42)), traits_type::construct(5, 42));
-    ASSERT_EQ(pool.spawn(traits_type::construct(5, 43)), entt::entity{7});
+    ASSERT_EQ(pool.emplace(traits_type::construct(5, 42)), traits_type::construct(5, 42));
+    ASSERT_EQ(pool.emplace(traits_type::construct(5, 43)), entt::entity{7});
 
     pool.erase(entt::entity{2});
 
-    ASSERT_EQ(pool.spawn(), traits_type::construct(2, 1));
+    ASSERT_EQ(pool.emplace(), traits_type::construct(2, 1));
 
     pool.erase(traits_type::construct(2, 1));
-    pool.spawn(entities, entities + 2u);
+    pool.insert(entities, entities + 2u);
 
     ASSERT_EQ(entities[0u], traits_type::construct(2, 2));
     ASSERT_EQ(entities[1u], entt::entity{8});
+}
+
+TEST(StorageEntity, Patch) {
+    entt::storage<entt::entity> pool;
+    const auto entity = pool.emplace();
+
+    int counter = 0;
+    auto callback = [&counter]() { ++counter; };
+
+    ASSERT_EQ(counter, 0);
+
+    pool.patch(entity);
+    pool.patch(entity, callback);
+    pool.patch(entity, callback, callback);
+
+    ASSERT_EQ(counter, 3);
+}
+
+ENTT_DEBUG_TEST(StorageEntityDeathTest, Patch) {
+    entt::storage<entt::entity> pool;
+
+    ASSERT_DEATH(pool.patch(entt::null), "");
+}
+
+TEST(StorageEntity, Insert) {
+    entt::storage<entt::entity> pool;
+    entt::entity entities[2u]{};
+
+    pool.insert(std::begin(entities), std::end(entities));
+
+    ASSERT_TRUE(pool.contains(entities[0u]));
+    ASSERT_TRUE(pool.contains(entities[1u]));
+
+    ASSERT_FALSE(pool.empty());
+    ASSERT_EQ(pool.size(), 2u);
+    ASSERT_EQ(pool.in_use(), 2u);
+
+    pool.erase(std::begin(entities), std::end(entities));
+
+    ASSERT_FALSE(pool.empty());
+    ASSERT_EQ(pool.size(), 2u);
+    ASSERT_EQ(pool.in_use(), 0u);
+
+    pool.insert(entities, entities + 1u);
+
+    ASSERT_TRUE(pool.contains(entities[0u]));
+    ASSERT_FALSE(pool.contains(entities[1u]));
+
+    ASSERT_FALSE(pool.empty());
+    ASSERT_EQ(pool.size(), 2u);
+    ASSERT_EQ(pool.in_use(), 1u);
 }
 
 TEST(StorageEntity, Pack) {
@@ -256,9 +307,9 @@ TEST(StorageEntity, Iterable) {
 
     entt::storage<entt::entity> pool;
 
-    pool.spawn(entt::entity{1});
-    pool.spawn(entt::entity{3});
-    pool.spawn(entt::entity{42});
+    pool.emplace(entt::entity{1});
+    pool.emplace(entt::entity{3});
+    pool.emplace(entt::entity{42});
 
     pool.erase(entt::entity{3});
 
@@ -300,9 +351,9 @@ TEST(StorageEntity, ConstIterable) {
 
     entt::storage<entt::entity> pool;
 
-    pool.spawn(entt::entity{1});
-    pool.spawn(entt::entity{3});
-    pool.spawn(entt::entity{42});
+    pool.emplace(entt::entity{1});
+    pool.emplace(entt::entity{3});
+    pool.emplace(entt::entity{42});
 
     pool.erase(entt::entity{3});
 
@@ -388,7 +439,7 @@ ENTT_DEBUG_TEST(StorageEntityDeathTest, SortAndRespect) {
     other.push(entt::entity{2});
 
     ASSERT_DEATH(pool.sort([](auto...) { return true; }), "");
-    ASSERT_DEATH(pool.respect(other), "");
+    ASSERT_DEATH(pool.sort_as(other), "");
 }
 
 TEST(StorageEntity, CustomAllocator) {

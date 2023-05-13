@@ -748,12 +748,14 @@ public:
      * sparse set results in undefined behavior.
      *
      * @param entt A valid identifier.
+     * @return The version of the given identifier.
      */
-    void bump(const entity_type entt) {
+    version_type bump(const entity_type entt) {
         auto &entity = sparse_ref(entt);
         ENTT_ASSERT(entt != tombstone && entity != null, "Cannot set the required version");
         entity = traits_type::combine(traits_type::to_integral(entity), traits_type::to_integral(entt));
         packed[static_cast<size_type>(traits_type::to_entity(entity))] = entt;
+        return traits_type::to_version(entt);
     }
 
     /**
@@ -954,18 +956,13 @@ public:
      * @brief Sort entities according to their order in another sparse set.
      *
      * Entities that are part of both the sparse sets are ordered internally
-     * according to the order they have in `other`. All the other entities goes
-     * to the end of the list and there are no guarantees on their order.<br/>
-     * In other terms, this function can be used to impose the same order on two
-     * sets by using one of them as a master and the other one as a slave.
-     *
-     * Iterating the sparse set with a couple of iterators returns elements in
-     * the expected order after a call to `respect`. See `begin` and `end` for
-     * more details.
+     * according to the order they have in `other`.<br/>
+     * All the other entities goes to the end of the list and there are no
+     * guarantees on their order.
      *
      * @param other The sparse sets that imposes the order of the entities.
      */
-    void respect(const basic_sparse_set &other) {
+    void sort_as(const basic_sparse_set &other) {
         compact();
 
         const auto to = other.end();

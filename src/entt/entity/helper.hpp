@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <type_traits>
+#include <utility>
 #include "../core/fwd.hpp"
 #include "../core/type_traits.hpp"
 #include "../signal/delegate.hpp"
@@ -27,7 +28,7 @@ public:
     /*! @brief Type of registry to convert. */
     using registry_type = Registry;
     /*! @brief Underlying entity identifier. */
-    using entity_type = std::remove_const_t<typename registry_type::entity_type>;
+    using entity_type = typename registry_type::entity_type;
 
     /**
      * @brief Constructs a converter for a given registry.
@@ -70,7 +71,7 @@ public:
     /*! @brief Type of registry to convert. */
     using registry_type = Registry;
     /*! @brief Underlying entity identifier. */
-    using entity_type = std::remove_const_t<typename registry_type::entity_type>;
+    using entity_type = typename registry_type::entity_type;
 
     /**
      * @brief Constructs a converter for a given registry.
@@ -127,7 +128,7 @@ template<typename Registry, typename Component>
 typename Registry::entity_type to_entity(const Registry &reg, const Component &instance) {
     const auto &storage = reg.template storage<Component>();
     constexpr auto page_size = std::remove_const_t<std::remove_reference_t<decltype(storage)>>::traits_type::page_size;
-    const typename Registry::base_type &base = storage;
+    const typename Registry::common_type &base = storage;
     const auto *addr = std::addressof(instance);
 
     for(auto it = base.rbegin(), last = base.rend(); it < last; it += page_size) {
