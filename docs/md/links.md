@@ -1,5 +1,22 @@
 # EnTT in Action
 
+<!--
+@cond TURN_OFF_DOXYGEN
+-->
+# Table of Contents
+
+* [Introduction](#introduction)
+* [EnTT in Action](#entt-in-action)
+  * [Games](#games)
+  * [Engines and the like](#engines-and-the-like)
+  * [Articles, videos and blog posts](#articles-videos-and-blog-posts)
+  * [Any Other Business](#any-other-business)
+<!--
+@endcond TURN_OFF_DOXYGEN
+-->
+
+# Introduction
+
 `EnTT` is widely used in private and commercial applications. I cannot even
 mention most of them because of some signatures I put on some documents time
 ago. Fortunately, there are also people who took the time to implement open
@@ -7,16 +24,24 @@ source projects based on `EnTT` and didn't hold back when it came to documenting
 them.
 
 Below an incomplete list of games, applications and articles that can be used as
-a reference. Where I put the word _apparently_ means that the use of `EnTT` is
-documented but the authors didn't make explicit announcements or contacted me
-directly.
+a reference.<br/>
+Where I put the word _apparently_ means that the use of `EnTT` is documented but
+the authors didn't make explicit announcements or contacted me directly.
 
-I hope this list can grow much more in the future:
+If you know of other resources out there that are about `EnTT`, feel free to
+open an issue or a PR and I'll be glad to add them to this page.<br/>
+I hope the following lists can grow much more in the future.
 
-* Games:
+# EnTT in Action
+
+## Games
+
   * [Minecraft](https://minecraft.net/en-us/attribution/) by
     [Mojang](https://mojang.com/): of course, **that** Minecraft, see the
     open source attributions page for more details.
+  * [Minecraft Legends](https://www.minecraft.net/it-it/about-legends) by
+    [Mojang](https://mojang.com/): an action strategy game where users have to
+    fight to defend the Overworld.
   * [Minecraft Earth](https://www.minecraft.net/en-us/about-earth) by
     [Mojang](https://mojang.com/): an augmented reality game for mobile, that
     lets users bring Minecraft into the real world.
@@ -102,8 +127,13 @@ I hope this list can grow much more in the future:
     multi-player arcade shooter game prototype.
   * [Confetti Party](https://github.com/hexerei/entt-confetti): C++ sample
     application as a starting point using `EnTT` and `SDL2`.
+  * [Hellbound](https://buas.itch.io/hellbound): a top-down action rogue-like
+    where to fight colossal demons in procedurally generated levels of hell.
+  * [Saurian Sorcery](https://github.com/cajallen/spellbook): a tower defense
+    game where to assemble a tribe of lizards to defend against robot invaders.
 
-* Engines and the like:
+## Engines and the like:
+
   * [Aether Engine](https://hadean.com/spatial-simulation/)
     [v1.1+](https://docs.hadean.com/v1.1/Licenses/) by
     [Hadean](https://hadean.com/): a library designed for spatially partitioning
@@ -177,9 +207,13 @@ I hope this list can grow much more in the future:
     open-source engine for building 2D & 3D real-time rendering and interactive
     contents.
   * [Kengine](https://github.com/phisko/kengine): the _Koala engine_ is a game
-    engine entirely implemented as an entity-component-ystem.
+    engine entirely implemented as an entity-component-system.
+  * [Scion2D](https://github.com/dwjclark11/Scion2D): 2D game engine with
+    [YouTube series](https://www.youtube.com/playlist?list=PL3HUvSWOJR7XRDwVVQqqWO-zyyscb8L-v)
+    included.
 
-* Articles, videos and blog posts:
+## Articles, videos and blog posts:
+
   * [Some posts](https://skypjack.github.io/tags/#entt) on my personal
     [blog](https://skypjack.github.io/) are about `EnTT`, for those who want to
     know **more** on this project.
@@ -203,6 +237,17 @@ I hope this list can grow much more in the future:
     - ... And so on.
       [Check out](https://www.youtube.com/channel/UCQ-W1KE9EYfdxhL6S4twUNw) the
       _Game Engine Series_ by The Cherno for more videos.
+  * [Game Engine series](https://www.youtube.com/@JADE-iteGames/videos) by
+    [dwjclark11](https://github.com/dwjclark11) (not just `EnTT` but a lot of
+    it):
+    - [Getting into ECS](https://youtu.be/k9CbonLopJU?si=za3Tisyc96_92DWM)
+    - [Creating ECS Wrapper Classes](https://youtu.be/yetyuMJRdbo?si=PJTkmap4Ysqbzb_M)
+    - [Runtime Reflection using EnTT meta](https://youtu.be/GrXV5A07GTY?si=fKdWTj9AOhnhtiXq)
+    - [Adding entt::meta and Sol2 bindings](https://youtu.be/IM55JgxOqFA?si=rsbb4AG_NVh4IUmD)
+      (with [part two](https://youtu.be/-PTt-b1tzRw?si=zPJ4vEluyheMcNgO) too)
+    - ... And so on.
+      [Check it out](https://www.youtube.com/playlist?list=PL3HUvSWOJR7XRDwVVQqqWO-zyyscb8L-v)
+      for more videos.
   * [Warmonger Dynasty devlog series](https://david-delassus.medium.com/list/warmonger-dynasty-devlogs-f64b71f556de)
     by [linkdd](https://github.com/linkdd): an interesting walkthrough of
     developing a game (also) with EnTT.
@@ -235,7 +280,8 @@ I hope this list can grow much more in the future:
     MMO(RPG)s and its [follow-up](https://youtu.be/yGlZeopx2hU) episode about
     player bots and full external ECS: a series definitely worth looking at.
 
-* Any Other Business:
+## Any Other Business:
+
   * [ArcGIS Runtime SDKs](https://developers.arcgis.com/arcgis-runtime/) by
     [Esri](https://www.esri.com/): they use `EnTT` for the internal ECS and the
     cross platform C++ rendering engine. The SDKs are utilized by a lot of
@@ -277,6 +323,3 @@ I hope this list can grow much more in the future:
   * GitHub contains also
     [many other examples](https://github.com/search?o=desc&q=%22skypjack%2Fentt%22&s=indexed&type=Code)
     of use of `EnTT` from which to take inspiration if interested.
-
-If you know of other resources out there that are about `EnTT`, feel free to
-open an issue or a PR and I'll be glad to add them to this page.

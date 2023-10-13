@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <entt/core/hashed_string.hpp>
 #include <entt/locator/locator.hpp>
+#include <entt/meta/context.hpp>
 #include <entt/meta/factory.hpp>
 #include <entt/meta/meta.hpp>
 #include <entt/meta/resolve.hpp>
@@ -49,6 +50,11 @@ TEST_F(MetaProp, Functionalities) {
     auto prop = entt::resolve<base_1_t>().prop("int"_hs);
 
     ASSERT_TRUE(prop);
+
+    ASSERT_EQ(prop, prop);
+    ASSERT_NE(prop, entt::meta_prop{});
+    ASSERT_FALSE(prop != prop);
+    ASSERT_TRUE(prop == prop);
 
     auto value = prop.value();
     auto cvalue = std::as_const(prop).value();

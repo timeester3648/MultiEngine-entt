@@ -20,7 +20,6 @@ namespace entt {
  */
 template<typename Type>
 class resource {
-    /*! @brief Resource handles are friends with each other. */
     template<typename>
     friend class resource;
 
@@ -210,7 +209,7 @@ template<typename Lhs, typename Rhs>
  */
 template<typename Lhs, typename Rhs>
 [[nodiscard]] bool operator>(const resource<Lhs> &lhs, const resource<Rhs> &rhs) noexcept {
-    return (std::addressof(*lhs) > std::addressof(*rhs));
+    return rhs < lhs;
 }
 
 /**

@@ -8,18 +8,18 @@
 #include <entt/entity/registry.hpp>
 
 TEST(BasicHandle, Assumptions) {
-    static_assert(std::is_trivially_copyable_v<entt::handle>);
-    static_assert(std::is_trivially_assignable_v<entt::handle, entt::handle>);
-    static_assert(std::is_trivially_destructible_v<entt::handle>);
+    ASSERT_TRUE(std::is_trivially_copyable_v<entt::handle>);
+    ASSERT_TRUE((std::is_trivially_assignable_v<entt::handle, entt::handle>));
+    ASSERT_TRUE(std::is_trivially_destructible_v<entt::handle>);
 
-    static_assert(std::is_trivially_copyable_v<entt::const_handle>);
-    static_assert(std::is_trivially_assignable_v<entt::const_handle, entt::const_handle>);
-    static_assert(std::is_trivially_destructible_v<entt::const_handle>);
+    ASSERT_TRUE(std::is_trivially_copyable_v<entt::const_handle>);
+    ASSERT_TRUE((std::is_trivially_assignable_v<entt::const_handle, entt::const_handle>));
+    ASSERT_TRUE(std::is_trivially_destructible_v<entt::const_handle>);
 }
 
 TEST(BasicHandle, DeductionGuide) {
-    static_assert(std::is_same_v<decltype(entt::basic_handle{std::declval<entt::registry &>(), {}}), entt::basic_handle<entt::registry>>);
-    static_assert(std::is_same_v<decltype(entt::basic_handle{std::declval<const entt::registry &>(), {}}), entt::basic_handle<const entt::registry>>);
+    testing::StaticAssertTypeEq<decltype(entt::basic_handle{std::declval<entt::registry &>(), {}}), entt::basic_handle<entt::registry>>();
+    testing::StaticAssertTypeEq<decltype(entt::basic_handle{std::declval<const entt::registry &>(), {}}), entt::basic_handle<const entt::registry>>();
 }
 
 TEST(BasicHandle, Construction) {
@@ -39,8 +39,8 @@ TEST(BasicHandle, Construction) {
 
     ASSERT_EQ(handle, chandle);
 
-    static_assert(std::is_same_v<entt::registry *, decltype(handle.registry())>);
-    static_assert(std::is_same_v<const entt::registry *, decltype(chandle.registry())>);
+    testing::StaticAssertTypeEq<entt::registry *, decltype(handle.registry())>();
+    testing::StaticAssertTypeEq<const entt::registry *, decltype(chandle.registry())>();
 }
 
 TEST(BasicHandle, Invalidation) {
@@ -171,17 +171,10 @@ TEST(BasicHandle, Component) {
     ASSERT_TRUE(registry.storage<double>().empty());
     ASSERT_EQ(0u, (handle.remove<char, double>()));
 
-    auto it = handle.storage().begin();
-
-    ASSERT_NE(it, handle.storage().end());
-    ASSERT_EQ(it->first, entt::type_id<entt::entity>().hash());
-    ASSERT_TRUE(it->second.contains(handle.entity()));
-
-    ASSERT_NE(++it, handle.storage().end());
-    ASSERT_EQ(it->first, entt::type_id<int>().hash());
-    ASSERT_TRUE(it->second.contains(handle.entity()));
-
-    ASSERT_EQ(++it, handle.storage().end());
+    for(auto [id, pool]: handle.storage()) {
+        ASSERT_EQ(id, entt::type_id<int>().hash());
+        ASSERT_TRUE(pool.contains(handle.entity()));
+    }
 
     ASSERT_TRUE((handle.any_of<int, char, double>()));
     ASSERT_FALSE((handle.all_of<int, char, double>()));
@@ -223,16 +216,16 @@ TEST(BasicHandle, Lifetime) {
     handle->emplace<int>();
 
     ASSERT_FALSE(registry.storage<int>().empty());
-    ASSERT_FALSE(registry.empty());
+    ASSERT_NE(registry.storage<entt::entity>().free_list(), 0u);
 
-    registry.each([handle](const auto e) {
-        ASSERT_EQ(handle->entity(), e);
-    });
+    for(auto [entt]: registry.storage<entt::entity>().each()) {
+        ASSERT_EQ(handle->entity(), entt);
+    }
 
     delete handle;
 
     ASSERT_FALSE(registry.storage<int>().empty());
-    ASSERT_FALSE(registry.empty());
+    ASSERT_NE(registry.storage<entt::entity>().free_list(), 0u);
 }
 
 TEST(BasicHandle, ImplicitConversions) {
@@ -257,40 +250,23 @@ TEST(BasicHandle, Storage) {
     entt::handle handle{registry, entity};
     entt::const_handle chandle{std::as_const(registry), entity};
 
-    static_assert(std::is_same_v<decltype(*handle.storage().begin()), std::pair<entt::id_type, entt::sparse_set &>>);
-    static_assert(std::is_same_v<decltype(*chandle.storage().begin()), std::pair<entt::id_type, const entt::sparse_set &>>);
+    testing::StaticAssertTypeEq<decltype(*handle.storage().begin()), std::pair<entt::id_type, entt::sparse_set &>>();
+    testing::StaticAssertTypeEq<decltype(*chandle.storage().begin()), std::pair<entt::id_type, const entt::sparse_set &>>();
 
-    auto it = handle.storage().begin();
-    auto cit = chandle.storage().begin();
-
-    ASSERT_NE(it, handle.storage().end());
-    ASSERT_EQ(++it, handle.storage().end());
-
-    ASSERT_NE(cit, chandle.storage().end());
-    ASSERT_EQ(++cit, chandle.storage().end());
+    ASSERT_EQ(handle.storage().begin(), handle.storage().end());
+    ASSERT_EQ(chandle.storage().begin(), chandle.storage().end());
 
     registry.storage<double>();
     registry.emplace<int>(entity);
 
-    it = handle.storage().begin();
-    cit = chandle.storage().begin();
+    ASSERT_NE(handle.storage().begin(), handle.storage().end());
+    ASSERT_NE(chandle.storage().begin(), chandle.storage().end());
 
-    ASSERT_EQ(it++, handle.storage().begin());
-    ASSERT_NE(it, handle.storage().end());
-    ASSERT_EQ(++it, handle.storage().end());
+    ASSERT_EQ(++handle.storage().begin(), handle.storage().end());
+    ASSERT_EQ(++chandle.storage().begin(), chandle.storage().end());
 
-    ASSERT_EQ(cit++, chandle.storage().begin());
-    ASSERT_NE(cit, chandle.storage().end());
-    ASSERT_EQ(++cit, chandle.storage().end());
-
-    it = handle.storage().begin();
-    cit = chandle.storage().begin();
-
-    ASSERT_EQ(it->second.type(), entt::type_id<entt::entity>());
-    ASSERT_EQ((++it)->second.type(), entt::type_id<int>());
-
-    ASSERT_EQ(cit->second.type(), entt::type_id<entt::entity>());
-    ASSERT_EQ((++cit)->second.type(), entt::type_id<int>());
+    ASSERT_EQ(handle.storage().begin()->second.type(), entt::type_id<int>());
+    ASSERT_EQ(chandle.storage().begin()->second.type(), entt::type_id<int>());
 }
 
 TEST(BasicHandle, HandleStorageIterator) {

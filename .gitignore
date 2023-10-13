@@ -11,6 +11,11 @@ cpp.hint
 
 # Bazel
 /bazel-*
+/test/bazel-*
+/user.bazelrc
+
+/test/bazel-*
+/user.bazelrc
 
 # exclude project files
 **.sln

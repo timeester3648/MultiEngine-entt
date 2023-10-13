@@ -1,6 +1,4 @@
-#
 # Tests configuration
-#
 
 include(FetchContent)
 include(CheckCXXSourceCompiles)
@@ -64,9 +62,19 @@ function(SETUP_TARGET TARGET_NAME)
                 >
                 # documentation diagnostic turned on for clang-cl only
                 $<$<STREQUAL:"${CMAKE_CXX_COMPILER_ID}","Clang">:-Wdocumentation>
+                # warnings from compilers that think I don't know what I'm doing
+                $<$<STREQUAL:"${CMAKE_CXX_COMPILER_ID}","Clang">:-Wcomma>
                 /EHsc /wd4324 /wd4996
-                $<$<CONFIG:Debug>:/Od>
+                # disabling INCREMENTAL is required by SizeBench
+                $<$<CONFIG:Debug>:/Od /INCREMENTAL:NO>
                 $<$<CONFIG:Release>:/O2>
+        )
+
+        target_link_options(
+            ${TARGET_NAME}
+            PRIVATE
+                # disabling INCREMENTAL is required by SizeBench
+                $<$<CONFIG:Debug>:/INCREMENTAL:NO>
         )
     else()
         target_compile_options(
@@ -180,7 +188,7 @@ if(ENTT_BUILD_SNAPSHOT)
     FetchContent_Declare(
         cereal
         GIT_REPOSITORY https://github.com/USCiLab/cereal.git
-        GIT_TAG v1.2.2
+        GIT_TAG v1.3.2
         GIT_SHALLOW 1
     )
 
@@ -236,7 +244,6 @@ SETUP_BASIC_TEST(sigh_mixin entt/entity/sigh_mixin.cpp)
 SETUP_BASIC_TEST(snapshot entt/entity/snapshot.cpp)
 SETUP_BASIC_TEST(sparse_set entt/entity/sparse_set.cpp)
 SETUP_BASIC_TEST(storage entt/entity/storage.cpp)
-SETUP_BASIC_TEST(storage_entity entt/entity/storage_entity.cpp)
 SETUP_BASIC_TEST(view entt/entity/view.cpp)
 
 # Test graph

@@ -5,9 +5,12 @@
 #include <entt/core/hashed_string.hpp>
 #include <entt/core/type_traits.hpp>
 #include <entt/locator/locator.hpp>
+#include <entt/meta/context.hpp>
 #include <entt/meta/factory.hpp>
 #include <entt/meta/meta.hpp>
 #include <entt/meta/node.hpp>
+#include <entt/meta/policy.hpp>
+#include <entt/meta/range.hpp>
 #include <entt/meta/resolve.hpp>
 #include "../common/config.h"
 
@@ -164,6 +167,12 @@ TEST_F(MetaData, Functionalities) {
     clazz_t instance{};
 
     ASSERT_TRUE(data);
+
+    ASSERT_EQ(data, data);
+    ASSERT_NE(data, entt::meta_data{});
+    ASSERT_FALSE(data != data);
+    ASSERT_TRUE(data == data);
+
     ASSERT_EQ(data.arity(), 1u);
     ASSERT_EQ(data.type(), entt::resolve<int>());
     ASSERT_EQ(data.arg(0u), entt::resolve<int>());

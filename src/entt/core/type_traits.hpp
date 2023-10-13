@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <iterator>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include "../config/config.h"
@@ -16,7 +17,7 @@ namespace entt {
  */
 template<std::size_t N>
 struct choice_t
-    // Unfortunately, doxygen cannot parse such a construct.
+    // unfortunately, doxygen cannot parse such a construct
     : /*! @cond TURN_OFF_DOXYGEN */ choice_t<N - 1> /*! @endcond */
 {};
 
@@ -385,9 +386,19 @@ struct value_list_element<Index, value_list<Value, Other...>>
  */
 template<auto Value, auto... Other>
 struct value_list_element<0u, value_list<Value, Other...>> {
+    /*! @brief Searched type. */
+    using type = decltype(Value);
     /*! @brief Searched value. */
     static constexpr auto value = Value;
 };
+
+/**
+ * @brief Helper type.
+ * @tparam Index Index of the type to return.
+ * @tparam List Value list to search into.
+ */
+template<std::size_t Index, typename List>
+using value_list_element_t = typename value_list_element<Index, List>::type;
 
 /**
  * @brief Helper type.
@@ -686,7 +697,7 @@ struct has_iterator_category<Type, std::void_t<typename std::iterator_traits<Typ
 
 /*! @copydoc is_iterator */
 template<typename Type>
-struct is_iterator<Type, std::enable_if_t<!std::is_same_v<std::remove_cv_t<std::remove_pointer_t<Type>>, void>>>
+struct is_iterator<Type, std::enable_if_t<!std::is_void_v<std::remove_cv_t<std::remove_pointer_t<Type>>>>>
     : internal::has_iterator_category<Type> {};
 
 /**
@@ -893,5 +904,17 @@ template<std::size_t Index, auto Candidate>
 using nth_argument_t = typename nth_argument<Index, Candidate>::type;
 
 } // namespace entt
+
+template<typename... Type>
+struct std::tuple_size<entt::type_list<Type...>>: std::integral_constant<std::size_t, entt::type_list<Type...>::size> {};
+
+template<std::size_t Index, typename... Type>
+struct std::tuple_element<Index, entt::type_list<Type...>>: entt::type_list_element<Index, entt::type_list<Type...>> {};
+
+template<auto... Value>
+struct std::tuple_size<entt::value_list<Value...>>: std::integral_constant<std::size_t, entt::value_list<Value...>::size> {};
+
+template<std::size_t Index, auto... Value>
+struct std::tuple_element<Index, entt::value_list<Value...>>: entt::value_list_element<Index, entt::value_list<Value...>> {};
 
 #endif
