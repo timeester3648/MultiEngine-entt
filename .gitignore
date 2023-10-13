@@ -14,9 +14,6 @@ cpp.hint
 /test/bazel-*
 /user.bazelrc
 
-/test/bazel-*
-/user.bazelrc
-
 # exclude project files
 **.sln
 **.vcxproj
