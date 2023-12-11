@@ -13,6 +13,7 @@
 #include <vector>
 #include "../container/dense_map.hpp"
 #include "../container/dense_set.hpp"
+#include "context.hpp"
 #include "meta.hpp"
 #include "type_traits.hpp"
 
@@ -26,13 +27,13 @@ namespace entt {
 namespace internal {
 
 template<typename, typename = void>
-struct dynamic_sequence_container: std::false_type {};
+struct fixed_size_sequence_container: std::true_type {};
 
 template<typename Type>
-struct dynamic_sequence_container<Type, std::void_t<decltype(&Type::clear)>>: std::true_type {};
+struct fixed_size_sequence_container<Type, std::void_t<decltype(&Type::clear)>>: std::false_type {};
 
 template<typename Type>
-inline constexpr bool dynamic_sequence_container_v = dynamic_sequence_container<Type>::value;
+inline constexpr bool fixed_size_sequence_container_v = fixed_size_sequence_container<Type>::value;
 
 template<typename, typename = void>
 struct key_only_associative_container: std::true_type {};
@@ -67,6 +68,9 @@ template<typename Type>
 struct basic_meta_sequence_container_traits {
     static_assert(std::is_same_v<Type, std::remove_cv_t<std::remove_reference_t<Type>>>, "Unexpected type");
 
+    /*! @brief True in case of key-only containers, false otherwise. */
+    static constexpr bool fixed_size = internal::fixed_size_sequence_container_v<Type>;
+
     /*! @brief Unsigned integer type. */
     using size_type = typename meta_sequence_container::size_type;
     /*! @brief Meta iterator type. */
@@ -87,11 +91,11 @@ struct basic_meta_sequence_container_traits {
      * @return True in case of success, false otherwise.
      */
     [[nodiscard]] static bool clear([[maybe_unused]] void *container) {
-        if constexpr(internal::dynamic_sequence_container_v<Type>) {
+        if constexpr(fixed_size) {
+            return false;
+        } else {
             static_cast<Type *>(container)->clear();
             return true;
-        } else {
-            return false;
         }
     }
 
@@ -117,76 +121,74 @@ struct basic_meta_sequence_container_traits {
      * @return True in case of success, false otherwise.
      */
     [[nodiscard]] static bool resize([[maybe_unused]] void *container, [[maybe_unused]] const size_type sz) {
-        if constexpr(internal::dynamic_sequence_container_v<Type> && std::is_default_constructible_v<typename Type::value_type>) {
+        if constexpr(fixed_size || !std::is_default_constructible_v<typename Type::value_type>) {
+            return false;
+        } else {
             static_cast<Type *>(container)->resize(sz);
             return true;
-        } else {
-            return false;
         }
     }
 
     /**
      * @brief Returns a possibly const iterator to the beginning.
+     * @param area The context to pass to the newly created iterator.
      * @param container Opaque pointer to a container of the given type.
-     * @param as_const True for const-only containers, false otherwise.
-     * @param it The meta iterator to rebind the underlying iterator to.
+     * @param as_const Const opaque pointer fallback.
+     * @return An iterator to the first element of the container.
      */
-    static void begin(const void *container, const bool as_const, iterator &it) {
-        if(as_const) {
-            it.rebind(static_cast<const Type *>(container)->begin());
-        } else {
-            it.rebind(static_cast<Type *>(const_cast<void *>(container))->begin());
-        }
+    static iterator begin(const meta_ctx &area, void *container, const void *as_const) {
+        return container ? iterator{area, static_cast<Type *>(container)->begin()}
+                         : iterator{area, static_cast<const Type *>(as_const)->begin()};
     }
 
     /**
      * @brief Returns a possibly const iterator to the end.
+     * @param area The context to pass to the newly created iterator.
      * @param container Opaque pointer to a container of the given type.
-     * @param as_const True for const-only containers, false otherwise.
-     * @param it The meta iterator to rebind the underlying iterator to.
+     * @param as_const Const opaque pointer fallback.
+     * @return An iterator that is past the last element of the container.
      */
-    static void end(const void *container, const bool as_const, iterator &it) {
-        as_const ? it.rebind(static_cast<const Type *>(container)->end()) : it.rebind(static_cast<Type *>(const_cast<void *>(container))->end());
+    static iterator end(const meta_ctx &area, void *container, const void *as_const) {
+        return container ? iterator{area, static_cast<Type *>(container)->end()}
+                         : iterator{area, static_cast<const Type *>(as_const)->end()};
     }
 
     /**
      * @brief Assigns one element to a container and constructs its object from
      * a given opaque instance.
+     * @param area The context to pass to the newly created iterator.
      * @param container Opaque pointer to a container of the given type.
      * @param value Optional opaque instance of the object to construct (as
      * value type).
      * @param cref Optional opaque instance of the object to construct (as
      * decayed const reference type).
-     * @param it The meta iterator to rebind the underlying iterator to.
-     * @return True in case of success, false otherwise.
+     * @param it Iterator before which the element will be inserted.
+     * @return A possibly invalid iterator to the inserted element.
      */
-    [[nodiscard]] static bool insert([[maybe_unused]] void *container, [[maybe_unused]] const void *value, [[maybe_unused]] const void *cref, [[maybe_unused]] iterator &it) {
-        if constexpr(internal::dynamic_sequence_container_v<Type>) {
-            auto *const non_const = any_cast<typename Type::iterator>(&it.base());
-
-            it.rebind(static_cast<Type *>(container)->insert(
-                non_const ? *non_const : any_cast<const typename Type::const_iterator &>(it.base()),
-                value ? *static_cast<const typename Type::value_type *>(value) : *static_cast<const std::remove_reference_t<typename Type::const_reference> *>(cref)));
-
-            return true;
+    [[nodiscard]] static iterator insert(const meta_ctx &area, [[maybe_unused]] void *container, [[maybe_unused]] const void *value, [[maybe_unused]] const void *cref, [[maybe_unused]] const iterator &it) {
+        if constexpr(fixed_size) {
+            return iterator{area};
         } else {
-            return false;
+            auto *const non_const = any_cast<typename Type::iterator>(&it.base());
+            return {area, static_cast<Type *>(container)->insert(
+                              non_const ? *non_const : any_cast<const typename Type::const_iterator &>(it.base()),
+                              value ? *static_cast<const typename Type::value_type *>(value) : *static_cast<const std::remove_reference_t<typename Type::const_reference> *>(cref))};
         }
     }
 
     /**
      * @brief Erases an element from a container.
+     * @param area The context to pass to the newly created iterator.
      * @param container Opaque pointer to a container of the given type.
      * @param it An opaque iterator to the element to erase.
-     * @return True in case of success, false otherwise.
+     * @return A possibly invalid iterator following the last removed element.
      */
-    [[nodiscard]] static bool erase([[maybe_unused]] void *container, [[maybe_unused]] iterator &it) {
-        if constexpr(internal::dynamic_sequence_container_v<Type>) {
-            auto *const non_const = any_cast<typename Type::iterator>(&it.base());
-            it.rebind(static_cast<Type *>(container)->erase(non_const ? *non_const : any_cast<const typename Type::const_iterator &>(it.base())));
-            return true;
+    [[nodiscard]] static iterator erase(const meta_ctx &area, [[maybe_unused]] void *container, [[maybe_unused]] const iterator &it) {
+        if constexpr(fixed_size) {
+            return iterator{area};
         } else {
-            return false;
+            auto *const non_const = any_cast<typename Type::iterator>(&it.base());
+            return {area, static_cast<Type *>(container)->erase(non_const ? *non_const : any_cast<const typename Type::const_iterator &>(it.base()))};
         }
     }
 };
@@ -243,22 +245,26 @@ struct basic_meta_associative_container_traits {
 
     /**
      * @brief Returns a possibly const iterator to the beginning.
+     * @param area The context to pass to the newly created iterator.
      * @param container Opaque pointer to a container of the given type.
-     * @param as_const True for const-only containers, false otherwise.
-     * @param it The meta iterator to rebind the underlying iterator to.
+     * @param as_const Const opaque pointer fallback.
+     * @return An iterator to the first element of the container.
      */
-    static void begin(const void *container, const bool as_const, iterator &it) {
-        as_const ? it.rebind<key_only>(static_cast<const Type *>(container)->begin()) : it.rebind<key_only>(static_cast<Type *>(const_cast<void *>(container))->begin());
+    static iterator begin(const meta_ctx &area, void *container, const void *as_const) {
+        return container ? iterator{area, std::bool_constant<key_only>{}, static_cast<Type *>(container)->begin()}
+                         : iterator{area, std::bool_constant<key_only>{}, static_cast<const Type *>(as_const)->begin()};
     }
 
     /**
      * @brief Returns a possibly const iterator to the end.
+     * @param area The context to pass to the newly created iterator.
      * @param container Opaque pointer to a container of the given type.
-     * @param as_const True for const-only containers, false otherwise.
-     * @param it The meta iterator to rebind the underlying iterator to.
+     * @param as_const Const opaque pointer fallback.
+     * @return An iterator that is past the last element of the container.
      */
-    static void end(const void *container, const bool as_const, iterator &it) {
-        as_const ? it.rebind<key_only>(static_cast<const Type *>(container)->end()) : it.rebind<key_only>(static_cast<Type *>(const_cast<void *>(container))->end());
+    static iterator end(const meta_ctx &area, void *container, const void *as_const) {
+        return container ? iterator{area, std::bool_constant<key_only>{}, static_cast<Type *>(container)->end()}
+                         : iterator{area, std::bool_constant<key_only>{}, static_cast<const Type *>(as_const)->end()};
     }
 
     /**
@@ -288,14 +294,15 @@ struct basic_meta_associative_container_traits {
 
     /**
      * @brief Finds an element with a given key.
+     * @param area The context to pass to the newly created iterator.
      * @param container Opaque pointer to a container of the given type.
-     * @param as_const True for const-only containers, false otherwise.
+     * @param as_const Const opaque pointer fallback.
      * @param key Opaque key value of an element to search for.
-     * @param it The meta iterator to rebind the underlying iterator to.
+     * @return An iterator to the element with the given key, if any.
      */
-    static void find(const void *container, const bool as_const, const void *key, iterator &it) {
-        const auto &elem = *static_cast<const typename Type::key_type *>(key);
-        as_const ? it.rebind<key_only>(static_cast<const Type *>(container)->find(elem)) : it.rebind<key_only>(static_cast<Type *>(const_cast<void *>(container))->find(elem));
+    static iterator find(const meta_ctx &area, void *container, const void *as_const, const void *key) {
+        return container ? iterator{area, std::bool_constant<key_only>{}, static_cast<Type *>(container)->find(*static_cast<const typename Type::key_type *>(key))}
+                         : iterator{area, std::bool_constant<key_only>{}, static_cast<const Type *>(as_const)->find(*static_cast<const typename Type::key_type *>(key))};
     }
 };
 

@@ -1,72 +1,40 @@
 #include <cstddef>
+#include <memory>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
 #include <gtest/gtest.h>
 #include <entt/core/compressed_pair.hpp>
-
-struct empty_type {};
-
-struct move_only_type {
-    move_only_type()
-        : value{new int{99}} {}
-
-    move_only_type(int v)
-        : value{new int{v}} {}
-
-    ~move_only_type() {
-        delete value;
-    }
-
-    move_only_type(const move_only_type &) = delete;
-    move_only_type &operator=(const move_only_type &) = delete;
-
-    move_only_type(move_only_type &&other) noexcept
-        : value{std::exchange(other.value, nullptr)} {}
-
-    move_only_type &operator=(move_only_type &&other) noexcept {
-        delete value;
-        value = std::exchange(other.value, nullptr);
-        return *this;
-    }
-
-    int *value;
-};
-
-struct non_default_constructible {
-    non_default_constructible(int v)
-        : value{v} {}
-
-    int value;
-};
+#include "../common/empty.h"
+#include "../common/non_default_constructible.h"
 
 TEST(CompressedPair, Size) {
     struct local {
         int value;
-        empty_type empty;
+        test::empty empty;
     };
 
     ASSERT_EQ(sizeof(entt::compressed_pair<int, int>), sizeof(int[2u]));
-    ASSERT_EQ(sizeof(entt::compressed_pair<empty_type, int>), sizeof(int));
-    ASSERT_EQ(sizeof(entt::compressed_pair<int, empty_type>), sizeof(int));
-    ASSERT_LT(sizeof(entt::compressed_pair<int, empty_type>), sizeof(local));
-    ASSERT_LT(sizeof(entt::compressed_pair<int, empty_type>), sizeof(std::pair<int, empty_type>));
+    ASSERT_EQ(sizeof(entt::compressed_pair<test::empty, int>), sizeof(int));
+    ASSERT_EQ(sizeof(entt::compressed_pair<int, test::empty>), sizeof(int));
+    ASSERT_LT(sizeof(entt::compressed_pair<int, test::empty>), sizeof(local));
+    ASSERT_LT(sizeof(entt::compressed_pair<int, test::empty>), sizeof(std::pair<int, test::empty>));
 }
 
 TEST(CompressedPair, ConstructCopyMove) {
-    ASSERT_FALSE((std::is_default_constructible_v<entt::compressed_pair<non_default_constructible, empty_type>>));
-    ASSERT_TRUE((std::is_default_constructible_v<entt::compressed_pair<move_only_type, empty_type>>));
+    ASSERT_FALSE((std::is_default_constructible_v<entt::compressed_pair<test::non_default_constructible, test::empty>>));
+    ASSERT_TRUE((std::is_default_constructible_v<entt::compressed_pair<std::unique_ptr<int>, test::empty>>));
 
-    ASSERT_TRUE((std::is_copy_constructible_v<entt::compressed_pair<non_default_constructible, empty_type>>));
-    ASSERT_FALSE((std::is_copy_constructible_v<entt::compressed_pair<move_only_type, empty_type>>));
-    ASSERT_TRUE((std::is_copy_assignable_v<entt::compressed_pair<non_default_constructible, empty_type>>));
-    ASSERT_FALSE((std::is_copy_assignable_v<entt::compressed_pair<move_only_type, empty_type>>));
+    ASSERT_TRUE((std::is_copy_constructible_v<entt::compressed_pair<test::non_default_constructible, test::empty>>));
+    ASSERT_FALSE((std::is_copy_constructible_v<entt::compressed_pair<std::unique_ptr<int>, test::empty>>));
+    ASSERT_TRUE((std::is_copy_assignable_v<entt::compressed_pair<test::non_default_constructible, test::empty>>));
+    ASSERT_FALSE((std::is_copy_assignable_v<entt::compressed_pair<std::unique_ptr<int>, test::empty>>));
 
-    ASSERT_TRUE((std::is_move_constructible_v<entt::compressed_pair<move_only_type, empty_type>>));
-    ASSERT_TRUE((std::is_move_assignable_v<entt::compressed_pair<move_only_type, empty_type>>));
+    ASSERT_TRUE((std::is_move_constructible_v<entt::compressed_pair<std::unique_ptr<int>, test::empty>>));
+    ASSERT_TRUE((std::is_move_assignable_v<entt::compressed_pair<std::unique_ptr<int>, test::empty>>));
 
-    entt::compressed_pair copyable{non_default_constructible{42}, empty_type{}};
+    entt::compressed_pair copyable{test::non_default_constructible{42}, test::empty{}};
     auto by_copy{copyable};
 
     ASSERT_EQ(by_copy.first().value, 42);
@@ -76,22 +44,22 @@ TEST(CompressedPair, ConstructCopyMove) {
 
     ASSERT_EQ(copyable.first().value, 3);
 
-    entt::compressed_pair<empty_type, move_only_type> movable{};
+    entt::compressed_pair<test::empty, std::unique_ptr<int>> movable{test::empty{}, std::make_unique<int>(99)};
     auto by_move{std::move(movable)};
 
-    ASSERT_EQ(*by_move.second().value, 99);
-    ASSERT_EQ(movable.second().value, nullptr);
+    ASSERT_EQ(*by_move.second(), 99);
+    ASSERT_EQ(movable.second(), nullptr);
 
-    *by_move.second().value = 3;
+    *by_move.second() = 3;
     movable = std::move(by_move);
 
-    ASSERT_EQ(*movable.second().value, 3);
-    ASSERT_EQ(by_move.second().value, nullptr);
+    ASSERT_EQ(*movable.second(), 3);
+    ASSERT_EQ(by_move.second(), nullptr);
 }
 
 TEST(CompressedPair, PiecewiseConstruct) {
     std::vector<int> vec{42};
-    entt::compressed_pair<empty_type, empty_type> empty{std::piecewise_construct, std::make_tuple(), std::make_tuple()};
+    entt::compressed_pair<test::empty, test::empty> empty{std::piecewise_construct, std::make_tuple(), std::make_tuple()};
     entt::compressed_pair<std::vector<int>, std::size_t> pair{std::piecewise_construct, std::forward_as_tuple(std::move(vec)), std::make_tuple(sizeof(empty))};
 
     ASSERT_EQ(pair.first().size(), 1u);
@@ -101,10 +69,10 @@ TEST(CompressedPair, PiecewiseConstruct) {
 
 TEST(CompressedPair, DeductionGuide) {
     int value = 42;
-    empty_type empty{};
+    test::empty empty{};
     entt::compressed_pair pair{value, 3};
 
-    testing::StaticAssertTypeEq<decltype(entt::compressed_pair{empty_type{}, empty}), entt::compressed_pair<empty_type, empty_type>>();
+    testing::StaticAssertTypeEq<decltype(entt::compressed_pair{test::empty{}, empty}), entt::compressed_pair<test::empty, test::empty>>();
     testing::StaticAssertTypeEq<decltype(pair), entt::compressed_pair<int, int>>();
 
     ASSERT_EQ(pair.first(), 42);
@@ -112,14 +80,14 @@ TEST(CompressedPair, DeductionGuide) {
 }
 
 TEST(CompressedPair, Getters) {
-    entt::compressed_pair pair{3, empty_type{}};
+    entt::compressed_pair pair{3, test::empty{}};
     const auto &cpair = pair;
 
     testing::StaticAssertTypeEq<decltype(pair.first()), int &>();
-    testing::StaticAssertTypeEq<decltype(pair.second()), empty_type &>();
+    testing::StaticAssertTypeEq<decltype(pair.second()), test::empty &>();
 
     testing::StaticAssertTypeEq<decltype(cpair.first()), const int &>();
-    testing::StaticAssertTypeEq<decltype(cpair.second()), const empty_type &>();
+    testing::StaticAssertTypeEq<decltype(cpair.second()), const test::empty &>();
 
     ASSERT_EQ(pair.first(), cpair.first());
     ASSERT_EQ(&pair.second(), &cpair.second());

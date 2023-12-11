@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 	<Type Name="entt::basic_registry&lt;*&gt;">
-		<Intrinsic Name="to_entity" Expression="*((traits_type::entity_type *)&amp;entity) &amp; traits_type::entity_mask">
-			<Parameter Name="entity" Type="traits_type::value_type &amp;"/>
-		</Intrinsic>
 		<DisplayString>{{ pools={ pools.size() } }}</DisplayString>
 		<Expand>
 			<Item Name="[entities]">entities</Item>
@@ -83,7 +80,6 @@
 		<Expand>
 			<Item Name="[capacity]" Optional="true" ExcludeView="simple">payload.capacity() * traits_type::page_size</Item>
 			<Item Name="[page size]" Optional="true" ExcludeView="simple">traits_type::page_size</Item>
-			<Item Name="[length]" Optional="true" ExcludeView="simple">length</Item>
 			<Item Name="[base]" ExcludeView="simple">(base_type*)this,nand</Item>
 			<Item Name="[base]" IncludeView="simple">(base_type*)this,view(simple)nand</Item>
 			<!-- having SFINAE-like techniques in natvis is priceless :) -->
@@ -101,10 +97,12 @@
 		</Expand>
 	</Type>
 	<Type Name="entt::basic_view&lt;*&gt;">
-		<DisplayString>{{ size_hint={ view->packed.size() } }}</DisplayString>
+		<DisplayString Condition="view != nullptr">{{ size_hint={ view->packed.size() } }}</DisplayString>
+		<DisplayString>{{ size_hint=0 }}</DisplayString>
 		<Expand>
-			<Item Name="[pools]">pools,na</Item>
-			<Item Name="[filter]">filter,na</Item>
+			<Item Name="[pools]" Optional="true">pools,na</Item>
+			<Item Name="[filter]" Optional="true">filter,na</Item>
+			<Item Name="[handle]" Condition="view != nullptr">view,na</Item>
 		</Expand>
 	</Type>
 	<Type Name="entt::basic_runtime_view&lt;*&gt;">

@@ -50,6 +50,7 @@ public:
     using reference = value_type;
     using difference_type = std::ptrdiff_t;
     using iterator_category = std::input_iterator_tag;
+    using iterator_concept = std::random_access_iterator_tag;
 
     constexpr registry_storage_iterator() noexcept
         : it{} {}
@@ -259,7 +260,7 @@ class basic_registry {
                 using storage_type = storage_for_type<Type>;
                 using alloc_type = typename storage_type::allocator_type;
 
-                if constexpr(std::is_void_v<void> && !std::is_constructible_v<alloc_type, allocator_type>) {
+                if constexpr(std::is_void_v<Type> && !std::is_constructible_v<alloc_type, allocator_type>) {
                     // std::allocator<void> has no cross constructors (waiting for C++20)
                     cpool = std::allocate_shared<storage_type>(get_allocator(), alloc_type{});
                 } else {
@@ -929,8 +930,7 @@ public:
     template<typename... Type>
     [[nodiscard]] auto try_get([[maybe_unused]] const entity_type entt) {
         if constexpr(sizeof...(Type) == 1u) {
-            auto &cpool = assure<std::remove_const_t<Type>...>();
-            return (static_cast<Type *>(cpool.contains(entt) ? std::addressof(cpool.get(entt)) : nullptr), ...);
+            return (const_cast<Type *>(std::as_const(*this).template try_get<Type>(entt)), ...);
         } else {
             return std::make_tuple(try_get<Type>(entt)...);
         }
@@ -1176,7 +1176,8 @@ public:
     template<typename To, typename From>
     void sort() {
         ENTT_ASSERT(!owned<To>(), "Cannot sort owned storage");
-        assure<To>().sort_as(assure<From>());
+        const base_type &cpool = assure<From>();
+        assure<To>().sort_as(cpool.begin(), cpool.end());
     }
 
     /**

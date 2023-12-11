@@ -5,27 +5,18 @@
 #include <memory>
 #include <string>
 #include <tuple>
-#include <type_traits>
 #include <utility>
+#include <vector>
 #include <gtest/gtest.h>
 #include <entt/container/dense_set.hpp>
 #include <entt/core/memory.hpp>
 #include <entt/core/utility.hpp>
 #include "../common/throwing_allocator.hpp"
 #include "../common/tracked_memory_resource.hpp"
-
-struct transparent_equal_to {
-    using is_transparent = void;
-
-    template<typename Type, typename Other>
-    constexpr std::enable_if_t<std::is_convertible_v<Other, Type>, bool>
-    operator()(const Type &lhs, const Other &rhs) const {
-        return lhs == static_cast<Type>(rhs);
-    }
-};
+#include "../common/transparent_equal_to.h"
 
 TEST(DenseSet, Functionalities) {
-    entt::dense_set<int, entt::identity, transparent_equal_to> set;
+    entt::dense_set<int, entt::identity, test::transparent_equal_to> set;
     const auto &cset = set;
 
     ASSERT_NO_FATAL_FAILURE([[maybe_unused]] auto alloc = set.get_allocator());
@@ -786,7 +777,7 @@ TEST(DenseSet, Swap) {
 }
 
 TEST(DenseSet, EqualRange) {
-    entt::dense_set<int, entt::identity, transparent_equal_to> set;
+    entt::dense_set<int, entt::identity, test::transparent_equal_to> set;
     const auto &cset = set;
 
     set.emplace(42);
@@ -987,36 +978,34 @@ TEST(DenseSet, Reserve) {
 }
 
 TEST(DenseSet, ThrowingAllocator) {
-    using allocator = test::throwing_allocator<std::size_t>;
-    using packed_allocator = test::throwing_allocator<std::pair<std::size_t, std::size_t>>;
-    using packed_exception = typename packed_allocator::exception_type;
-
     constexpr std::size_t minimum_bucket_count = 8u;
+    using allocator = test::throwing_allocator<std::size_t>;
     entt::dense_set<std::size_t, std::hash<std::size_t>, std::equal_to<std::size_t>, allocator> set{};
 
-    packed_allocator::trigger_on_allocate = true;
+    set.get_allocator().throw_counter<std::pair<std::size_t, std::size_t>>(0u);
 
     ASSERT_EQ(set.bucket_count(), minimum_bucket_count);
-    ASSERT_THROW(set.reserve(2u * set.bucket_count()), packed_exception);
+    ASSERT_THROW(set.reserve(2u * set.bucket_count()), test::throwing_allocator_exception);
     ASSERT_EQ(set.bucket_count(), minimum_bucket_count);
 
-    packed_allocator::trigger_on_allocate = true;
+    set.get_allocator().throw_counter<std::pair<std::size_t, std::size_t>>(0u);
 
-    ASSERT_THROW(set.emplace(), packed_exception);
+    ASSERT_THROW(set.emplace(), test::throwing_allocator_exception);
     ASSERT_FALSE(set.contains(0u));
 
-    packed_allocator::trigger_on_allocate = true;
+    set.get_allocator().throw_counter<std::pair<std::size_t, std::size_t>>(0u);
 
-    ASSERT_THROW(set.emplace(std::size_t{}), packed_exception);
+    ASSERT_THROW(set.emplace(std::size_t{}), test::throwing_allocator_exception);
     ASSERT_FALSE(set.contains(0u));
 
-    packed_allocator::trigger_on_allocate = true;
+    set.get_allocator().throw_counter<std::pair<std::size_t, std::size_t>>(0u);
 
-    ASSERT_THROW(set.insert(0u), packed_exception);
+    ASSERT_THROW(set.insert(0u), test::throwing_allocator_exception);
     ASSERT_FALSE(set.contains(0u));
 }
 
 #if defined(ENTT_HAS_TRACKED_MEMORY_RESOURCE)
+#    include <memory_resource>
 
 TEST(DenseSet, NoUsesAllocatorConstruction) {
     using allocator = std::pmr::polymorphic_allocator<int>;

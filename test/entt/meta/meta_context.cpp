@@ -1,12 +1,17 @@
+#include <iterator>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include <gtest/gtest.h>
 #include <entt/core/hashed_string.hpp>
+#include <entt/core/type_info.hpp>
 #include <entt/meta/container.hpp>
 #include <entt/meta/context.hpp>
 #include <entt/meta/factory.hpp>
 #include <entt/meta/pointer.hpp>
+#include <entt/meta/resolve.hpp>
 #include <entt/meta/template.hpp>
+#include "../common/empty.h"
 
 struct base {
     base() = default;
@@ -45,10 +50,8 @@ struct clazz: base {
     }
 
     int value{};
-    static inline int bucket{};
+    inline static int bucket{};
 };
-
-struct local_only {};
 
 struct argument {
     argument(int val)
@@ -97,7 +100,7 @@ class MetaContext: public ::testing::Test {
         entt::meta<int>(context)
             .data<local_marker>("marker"_hs);
 
-        entt::meta<local_only>(context)
+        entt::meta<test::empty>(context)
             .type("quux"_hs);
 
         entt::meta<argument>(context)
@@ -148,14 +151,14 @@ TEST_F(MetaContext, Resolve) {
     ASSERT_TRUE(entt::resolve<clazz>());
     ASSERT_TRUE(entt::resolve<clazz>(context));
 
-    ASSERT_TRUE(entt::resolve<local_only>());
-    ASSERT_TRUE(entt::resolve<local_only>(context));
+    ASSERT_TRUE(entt::resolve<test::empty>());
+    ASSERT_TRUE(entt::resolve<test::empty>(context));
 
     ASSERT_TRUE(entt::resolve(entt::type_id<clazz>()));
     ASSERT_TRUE(entt::resolve(context, entt::type_id<clazz>()));
 
-    ASSERT_FALSE(entt::resolve(entt::type_id<local_only>()));
-    ASSERT_TRUE(entt::resolve(context, entt::type_id<local_only>()));
+    ASSERT_FALSE(entt::resolve(entt::type_id<test::empty>()));
+    ASSERT_TRUE(entt::resolve(context, entt::type_id<test::empty>()));
 
     ASSERT_TRUE(entt::resolve("foo"_hs));
     ASSERT_FALSE(entt::resolve(context, "foo"_hs));

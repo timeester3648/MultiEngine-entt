@@ -1,4 +1,5 @@
 #include <functional>
+#include <memory>
 #include <utility>
 #include <gtest/gtest.h>
 #include <entt/signal/emitter.hpp>
@@ -15,7 +16,7 @@ struct bar_event {};
 struct quux_event {};
 
 TEST(Emitter, Move) {
-    test_emitter emitter;
+    test_emitter emitter{};
     emitter.on<foo_event>([](auto &, const auto &) {});
 
     ASSERT_FALSE(emitter.empty());
@@ -35,8 +36,8 @@ TEST(Emitter, Move) {
 }
 
 TEST(Emitter, Swap) {
-    test_emitter emitter;
-    test_emitter other;
+    test_emitter emitter{};
+    test_emitter other{};
     int value{};
 
     emitter.on<foo_event>([&value](auto &event, const auto &) {
@@ -59,7 +60,7 @@ TEST(Emitter, Swap) {
 }
 
 TEST(Emitter, Clear) {
-    test_emitter emitter;
+    test_emitter emitter{};
 
     ASSERT_TRUE(emitter.empty());
 
@@ -101,7 +102,7 @@ TEST(Emitter, Clear) {
 }
 
 TEST(Emitter, ClearFromCallback) {
-    test_emitter emitter;
+    test_emitter emitter{};
 
     ASSERT_TRUE(emitter.empty());
 
@@ -124,7 +125,7 @@ TEST(Emitter, ClearFromCallback) {
 }
 
 TEST(Emitter, On) {
-    test_emitter emitter;
+    test_emitter emitter{};
     int value{};
 
     emitter.on<foo_event>([&value](auto &event, const auto &) {
@@ -141,7 +142,7 @@ TEST(Emitter, On) {
 }
 
 TEST(Emitter, OnAndErase) {
-    test_emitter emitter;
+    test_emitter emitter{};
     std::function<void(bar_event &, test_emitter &)> func{};
 
     emitter.on(func);
@@ -156,7 +157,7 @@ TEST(Emitter, OnAndErase) {
 }
 
 TEST(Emitter, CustomAllocator) {
-    std::allocator<void> allocator;
+    std::allocator<void> allocator{};
     test_emitter emitter{allocator};
 
     ASSERT_EQ(emitter.get_allocator(), allocator);
