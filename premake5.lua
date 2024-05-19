@@ -12,3 +12,6 @@ project "entt"
 		"./src/**.h",
 		"./src/**.hpp"
 	}
+
+	filter { "toolset:msc" }
+		files { "./natvis/**.natvis" }
