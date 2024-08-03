@@ -10,7 +10,6 @@ DOC:
 * bump entities, reserved bits on identifiers
 
 TODO:
-* resource cache: avoid using shared ptr with loader and the others
 * further optimize exclusion lists in multi type views (no existence check)
 * further improve meta resolve function by id (bimap)
 * get rid of observers, storage based views made them pointless - document alternatives
@@ -21,11 +20,29 @@ TODO:
 * view: update natvis as needed after the last rework, merge pools/filter in the same array, drop check (?) and turn view into a position
 * view: type-only view_iterator (dyn get/excl sizes), type-only basic_common_view (dyn get/excl sizes with pointer to array from derived)
 * combine version-mask-vs-version-bits tricks with reserved bits to allow things like enabling/disabling
-* basic_sparse_set(basic_sparse_set &&other, const allocator_type &allocator) uses moved-from packed in assert (same for storage)
-* maybe drop begin(v)/end(v) from sparse set and only use scoped begin/end at call sites
-* view unchecked_refresh loop is never executed if Get is 1u
-* review all // NOLINT + linter workflow + review clang-tidy file
 * self contained entity traits to avoid explicit specializations (ie enum constants)
-* review assure conflicts check, hash doesn't fit the purpose maybe
-* allow to zero-sized versions (with non-regression tests)
 * auto type info data from types if present
+* test: push sharing types further
+* after non-continuous generation for entity storage:
+  - get/reset placeholder to position after saving/loading (avoid long lookup)
+  - allow skipping/reserving entity identifiers
+  - documentation for reserved entities
+* storage entity: no emplace/insert, rename and add a fast range-push from above
+* view: propagate tombostone check request to iterator
+* table: pop back to support swap and pop, single column access, empty type optimization
+* checkout tools workflow
+* review constrained noexcept-ness (ie sigh)
+* registry::view const invokes refresh multiple times implicitly
+* improve front (no multiple checks) and back (ie no contains) for multi-type view
+* cleanup common view from tricks to handle single swap-only and in-place, if constexpr branches
+* exploit ref/cref in any to avoid invoking the vtable if possible
+* entity based component_traits
+* copy-and-swap for any and meta_any
+* fix cmake warning about FetchContent_Populate
+* deprecate meta properties in favor of custom data
+* make meta objects safe to use with null nodes
+* meta: vectors for details and props
+* suppress -Wself-move on CI with g++13
+* view and view iterator specializations for multi, single and filtered elements
+* organizer support to groups
+* improve none_of in view, avoid checking for validity (especially during each)

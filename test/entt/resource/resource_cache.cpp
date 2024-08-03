@@ -9,10 +9,9 @@
 #include <entt/resource/cache.hpp>
 #include <entt/resource/loader.hpp>
 #include <entt/resource/resource.hpp>
-#include "../common/throwing_allocator.hpp"
-
-struct broken_tag {};
-struct with_callback {};
+#include "../../common/empty.h"
+#include "../../common/linter.hpp"
+#include "../../common/throwing_allocator.hpp"
 
 template<typename Type>
 struct loader {
@@ -24,12 +23,12 @@ struct loader {
     }
 
     template<typename Func>
-    result_type operator()(with_callback, Func &&func) const {
+    result_type operator()(test::other_empty, Func &&func) const {
         return std::forward<Func>(func)();
     }
 
     template<typename... Args>
-    result_type operator()(broken_tag, Args &&...) const {
+    result_type operator()(test::empty) const {
         return {};
     }
 };
@@ -124,7 +123,9 @@ TEST(ResourceCache, Move) {
 
     entt::resource_cache<std::size_t> other{std::move(cache)};
 
-    ASSERT_EQ(cache.size(), 0u); // NOLINT
+    test::is_initialized(cache);
+
+    ASSERT_TRUE(cache.empty());
     ASSERT_TRUE(other.contains("resource"_hs));
 
     cache = other;
@@ -132,8 +133,9 @@ TEST(ResourceCache, Move) {
     cache.load("bar"_hs, 1u);
     other.load("quux"_hs, 0u);
     other = std::move(cache);
+    test::is_initialized(cache);
 
-    ASSERT_EQ(cache.size(), 0u); // NOLINT
+    ASSERT_TRUE(cache.empty());
     ASSERT_TRUE(other.contains("resource"_hs));
     ASSERT_TRUE(other.contains("foo"_hs));
     ASSERT_TRUE(other.contains("bar"_hs));
@@ -321,34 +323,34 @@ TEST(ResourceCache, Load) {
 }
 
 TEST(ResourceCache, Erase) {
-    constexpr std::size_t resource_count = 8u;
+    constexpr std::size_t resource_count = 5u;
     entt::resource_cache<std::size_t> cache;
 
-    for(std::size_t next{}, last = resource_count + 1u; next < last; ++next) {
+    for(std::size_t next{}; next < resource_count; ++next) {
         cache.load(static_cast<entt::id_type>(next), next);
     }
 
-    ASSERT_EQ(cache.size(), resource_count + 1u);
+    ASSERT_EQ(cache.size(), resource_count);
 
-    for(std::size_t next{}, last = resource_count + 1u; next < last; ++next) {
+    for(std::size_t next{}; next < resource_count; ++next) {
         ASSERT_TRUE(cache.contains(static_cast<entt::id_type>(next)));
     }
 
     auto it = cache.erase(++cache.begin());
     it = cache.erase(it, it + 1);
 
-    ASSERT_EQ((--cache.end())->first, 6u);
-    ASSERT_EQ(cache.erase(6u), 1u);
-    ASSERT_EQ(cache.erase(6u), 0u);
+    ASSERT_EQ((--cache.end())->first, 2u);
+    ASSERT_EQ(cache.erase(2u), 1u);
+    ASSERT_EQ(cache.erase(2u), 0u);
 
-    ASSERT_EQ(cache.size(), resource_count + 1u - 3u);
+    ASSERT_EQ(cache.size(), 2u);
 
     ASSERT_EQ(it, ++cache.begin());
-    ASSERT_EQ(it->first, 7u);
-    ASSERT_EQ((--cache.end())->first, 5u);
+    ASSERT_EQ(cache.begin()->first, 0u);
+    ASSERT_EQ((--cache.end())->first, 3u);
 
-    for(std::size_t next{}, last = resource_count + 1u; next < last; ++next) {
-        if(next == 1u || next == 8u || next == 6u) { // NOLINT
+    for(std::size_t next{}; next < resource_count; ++next) {
+        if(next == 1u || next == 2u || next == 4u) {
             ASSERT_FALSE(cache.contains(static_cast<entt::id_type>(next)));
         } else {
             ASSERT_TRUE(cache.contains(static_cast<entt::id_type>(next)));
@@ -357,7 +359,7 @@ TEST(ResourceCache, Erase) {
 
     cache.erase(cache.begin(), cache.end());
 
-    for(std::size_t next{}, last = resource_count + 1u; next < last; ++next) {
+    for(std::size_t next{}; next < resource_count; ++next) {
         ASSERT_FALSE(cache.contains(static_cast<entt::id_type>(next)));
     }
 
@@ -389,7 +391,7 @@ TEST(ResourceCache, LoaderDispatching) {
     ASSERT_TRUE(cache.contains("resource"_hs));
     ASSERT_EQ(cache["resource"_hs], 1);
 
-    cache.force_load("resource"_hs, with_callback{}, []() { return std::make_shared<int>(2); });
+    cache.force_load("resource"_hs, test::other_empty{}, []() { return std::make_shared<int>(2); });
 
     ASSERT_TRUE(cache.contains("resource"_hs));
     ASSERT_EQ(cache["resource"_hs], 2);
@@ -399,7 +401,7 @@ TEST(ResourceCache, BrokenLoader) {
     using namespace entt::literals;
 
     entt::resource_cache<int, loader<int>> cache;
-    cache.load("resource"_hs, broken_tag{});
+    cache.load("resource"_hs, test::empty{});
 
     ASSERT_TRUE(cache.contains("resource"_hs));
     ASSERT_FALSE(cache["resource"_hs]);

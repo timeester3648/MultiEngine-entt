@@ -1,9 +1,9 @@
+#include <algorithm>
 #include <array>
-#include <cstdint>
 #include <vector>
 #include <gtest/gtest.h>
 #include <entt/core/algorithm.hpp>
-#include "../common/boxed_int.h"
+#include "../../common/boxed_type.h"
 
 TEST(Algorithm, StdSort) {
     // well, I'm pretty sure it works, it's std::sort!!
@@ -12,9 +12,7 @@ TEST(Algorithm, StdSort) {
 
     sort(arr.begin(), arr.end());
 
-    for(auto it = arr.begin(), last = (arr.end() - 1u); it != last; ++it) {
-        ASSERT_LT(*it, *(it + 1u));
-    }
+    ASSERT_TRUE(std::is_sorted(arr.begin(), arr.end()));
 }
 
 TEST(Algorithm, StdSortBoxedInt) {
@@ -26,9 +24,14 @@ TEST(Algorithm, StdSortBoxedInt) {
         return lhs.value > rhs.value;
     });
 
-    for(auto it = arr.begin(), last = (arr.end() - 1u); it != last; ++it) {
-        ASSERT_GT(it->value, (it + 1u)->value);
-    }
+    ASSERT_TRUE(std::is_sorted(arr.rbegin(), arr.rend()));
+}
+
+TEST(Algorithm, StdSortEmptyContainer) {
+    std::vector<int> vec{};
+    const entt::std_sort sort;
+    // this should crash with asan enabled if we break the constraint
+    sort(vec.begin(), vec.end());
 }
 
 TEST(Algorithm, InsertionSort) {
@@ -37,9 +40,7 @@ TEST(Algorithm, InsertionSort) {
 
     sort(arr.begin(), arr.end());
 
-    for(auto it = arr.begin(), last = (arr.end() - 1u); it != last; ++it) {
-        ASSERT_LT(*it, *(it + 1u));
-    }
+    ASSERT_TRUE(std::is_sorted(arr.begin(), arr.end()));
 }
 
 TEST(Algorithm, InsertionSortBoxedInt) {
@@ -50,9 +51,7 @@ TEST(Algorithm, InsertionSortBoxedInt) {
         return lhs.value > rhs.value;
     });
 
-    for(auto it = arr.begin(), last = (arr.end() - 1u); it != last; ++it) {
-        ASSERT_GT(it->value, (it + 1u)->value);
-    }
+    ASSERT_TRUE(std::is_sorted(arr.rbegin(), arr.rend()));
 }
 
 TEST(Algorithm, InsertionSortEmptyContainer) {
@@ -70,9 +69,7 @@ TEST(Algorithm, RadixSort) {
         return value;
     });
 
-    for(auto it = arr.begin(), last = (arr.end() - 1u); it != last; ++it) {
-        ASSERT_LT(*it, *(it + 1u));
-    }
+    ASSERT_TRUE(std::is_sorted(arr.begin(), arr.end()));
 }
 
 TEST(Algorithm, RadixSortBoxedInt) {
@@ -83,9 +80,7 @@ TEST(Algorithm, RadixSortBoxedInt) {
         return instance.value;
     });
 
-    for(auto it = arr.begin(), last = (arr.end() - 1u); it != last; ++it) {
-        ASSERT_GT(it->value, (it + 1u)->value);
-    }
+    ASSERT_TRUE(std::is_sorted(arr.rbegin(), arr.rend()));
 }
 
 TEST(Algorithm, RadixSortEmptyContainer) {

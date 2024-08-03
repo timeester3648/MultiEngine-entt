@@ -1,10 +1,10 @@
 #include <memory>
 #include <gtest/gtest.h>
 #include <entt/locator/locator.hpp>
-#include "../common/config.h"
+#include "../../common/config.h"
 
 struct base_service {
-    virtual ~base_service() = default;
+    virtual ~base_service() noexcept = default;
     virtual int invoke(int) = 0;
 };
 
@@ -86,5 +86,5 @@ ENTT_DEBUG_TEST_F(ServiceLocatorDeathTest, UninitializedValue) {
 
     entt::locator<base_service>::reset();
 
-    ASSERT_DEATH(entt::locator<base_service>::value().invoke(42), "");
+    ASSERT_DEATH(entt::locator<base_service>::value().invoke(4), "");
 }

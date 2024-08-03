@@ -3,10 +3,10 @@
 #include <gtest/gtest.h>
 #include <entt/core/type_info.hpp>
 #include <entt/resource/resource.hpp>
-#include "../common/linter.hpp"
+#include "../../common/linter.hpp"
 
 struct base {
-    virtual ~base() = default;
+    virtual ~base() noexcept = default;
 
     [[nodiscard]] virtual const entt::type_info &type() const noexcept {
         return entt::type_id<base>();
@@ -56,6 +56,18 @@ TEST(Resource, Functionalities) {
     ASSERT_TRUE(copy);
     ASSERT_TRUE(move);
     ASSERT_EQ(copy, move);
+
+    copy.reset(std::make_shared<derived>());
+
+    ASSERT_TRUE(copy);
+    ASSERT_TRUE(move);
+    ASSERT_NE(copy, move);
+
+    move.reset();
+
+    ASSERT_TRUE(copy);
+    ASSERT_FALSE(move);
+    ASSERT_NE(copy, move);
 }
 
 TEST(Resource, DerivedToBase) {
@@ -86,6 +98,7 @@ TEST(Resource, ConstNonConstAndAllInBetween) {
 
     entt::resource<const derived> copy{resource};
     entt::resource<const derived> move{std::move(other)};
+
     test::is_initialized(other);
 
     ASSERT_TRUE(resource);

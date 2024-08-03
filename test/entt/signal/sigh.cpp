@@ -2,7 +2,7 @@
 #include <utility>
 #include <gtest/gtest.h>
 #include <entt/signal/sigh.hpp>
-#include "../common/linter.hpp"
+#include "../../common/linter.hpp"
 
 struct sigh_listener {
     static void f(int &v) {
@@ -70,7 +70,8 @@ TEST(SigH, Lifetime) {
     ASSERT_NO_THROW(delete new signal{});
 }
 
-TEST(SigH, Clear) {
+TEST(SigH, Disconnect) {
+    sigh_listener listener;
     entt::sigh<void(int &)> sigh;
     entt::sink sink{sigh};
 
@@ -79,7 +80,32 @@ TEST(SigH, Clear) {
     ASSERT_FALSE(sink.empty());
     ASSERT_FALSE(sigh.empty());
 
-    sink.disconnect(static_cast<const void *>(nullptr));
+    sink.disconnect<&sigh_listener::f>();
+
+    ASSERT_TRUE(sink.empty());
+    ASSERT_TRUE(sigh.empty());
+
+    sink.connect<&sigh_listener::g>(listener);
+
+    ASSERT_FALSE(sink.empty());
+    ASSERT_FALSE(sigh.empty());
+
+    sink.disconnect<&sigh_listener::g>(listener);
+
+    ASSERT_TRUE(sink.empty());
+    ASSERT_TRUE(sigh.empty());
+
+    sink.connect<&sigh_listener::g>(listener);
+
+    ASSERT_FALSE(sink.empty());
+    ASSERT_FALSE(sigh.empty());
+
+    sink.disconnect(&listener);
+
+    ASSERT_TRUE(sink.empty());
+    ASSERT_TRUE(sigh.empty());
+
+    sink.connect<&sigh_listener::f>();
 
     ASSERT_FALSE(sink.empty());
     ASSERT_FALSE(sigh.empty());
@@ -182,11 +208,6 @@ TEST(SigH, Members) {
 
     sink.connect<&sigh_listener::g>(&l1);
     sink.connect<&sigh_listener::h>(l2);
-
-    ASSERT_FALSE(sigh.empty());
-    ASSERT_EQ(sigh.size(), 2u);
-
-    sink.disconnect(static_cast<const void *>(nullptr));
 
     ASSERT_FALSE(sigh.empty());
     ASSERT_EQ(sigh.size(), 2u);
@@ -305,6 +326,7 @@ TEST(SigH, ScopedConnectionMove) {
 
     {
         const entt::scoped_connection inner{std::move(outer)};
+
         test::is_initialized(outer);
 
         ASSERT_FALSE(listener.val);
@@ -484,6 +506,7 @@ TEST(SigH, CustomAllocator) {
     ASSERT_FALSE(copy.empty());
 
     decltype(sigh) move{std::move(copy), allocator};
+
     test::is_initialized(copy);
 
     ASSERT_TRUE(copy.empty());
