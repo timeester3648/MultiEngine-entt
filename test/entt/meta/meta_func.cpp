@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <type_traits>
 #include <utility>
 #include <gtest/gtest.h>
 #include <entt/core/hashed_string.hpp>
@@ -14,7 +15,7 @@
 
 struct base {
     base() = default;
-    virtual ~base() noexcept = default;
+    virtual ~base() = default;
 
     void setter(int v) {
         value = v;

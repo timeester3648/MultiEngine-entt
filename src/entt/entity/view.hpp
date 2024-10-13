@@ -18,6 +18,13 @@ namespace entt {
 /*! @cond TURN_OFF_DOXYGEN */
 namespace internal {
 
+template<typename Type>
+const Type *view_placeholder() {
+    static_assert(std::is_same_v<std::remove_const_t<std::remove_reference_t<Type>>, Type>, "Unexpected type");
+    static const Type placeholder{};
+    return &placeholder;
+}
+
 template<typename It, typename Entity>
 [[nodiscard]] bool all_of(It first, const It last, const Entity entt) noexcept {
     for(; (first != last) && (*first)->contains(entt); ++first) {}
@@ -26,13 +33,13 @@ template<typename It, typename Entity>
 
 template<typename It, typename Entity>
 [[nodiscard]] bool none_of(It first, const It last, const Entity entt) noexcept {
-    for(; (first != last) && !(*first && (*first)->contains(entt)); ++first) {}
+    for(; (first != last) && !(*first)->contains(entt); ++first) {}
     return first == last;
 }
 
 template<typename It>
 [[nodiscard]] bool fully_initialized(It first, const It last) noexcept {
-    for(; (first != last) && *first; ++first) {}
+    for(const auto *placeholder = view_placeholder<std::remove_const_t<std::remove_pointer_t<typename std::iterator_traits<It>::value_type>>>(); (first != last) && *first != placeholder; ++first) {}
     return first == last;
 }
 
@@ -217,6 +224,8 @@ class basic_view;
  */
 template<typename Type, std::size_t Get, std::size_t Exclude>
 class basic_common_view {
+    static_assert(std::is_same_v<std::remove_const_t<std::remove_reference_t<Type>>, Type>, "Unexpected type");
+
     template<typename Return, typename View, typename Other, std::size_t... GLhs, std::size_t... ELhs, std::size_t... GRhs, std::size_t... ERhs>
     friend Return internal::view_pack(const View &, const Other &, std::index_sequence<GLhs...>, std::index_sequence<ELhs...>, std::index_sequence<GRhs...>, std::index_sequence<ERhs...>);
 
@@ -239,7 +248,11 @@ class basic_common_view {
 
 protected:
     /*! @cond TURN_OFF_DOXYGEN */
-    basic_common_view() noexcept = default;
+    basic_common_view() noexcept {
+        for(size_type pos{}; pos < Exclude; ++pos) {
+            filter[pos] = internal::view_placeholder<Type>();
+        }
+    }
 
     basic_common_view(std::array<const Type *, Get> value, std::array<const Type *, Exclude> excl) noexcept
         : pools{value},
@@ -253,10 +266,18 @@ protected:
     }
 
     [[nodiscard]] const Type *storage(const std::size_t pos) const noexcept {
-        return (pos < Get) ? pools[pos] : filter[pos - Get];
+        if(pos < Get) {
+            return pools[pos];
+        } else if(const auto idx = pos - Get; filter[idx] != internal::view_placeholder<Type>()) {
+            return filter[idx];
+        }
+
+        return nullptr;
     }
 
     void storage(const std::size_t pos, const Type *elem) noexcept {
+        ENTT_ASSERT(elem != nullptr, "Unexpected element");
+
         if(pos < Get) {
             pools[pos] = elem;
             refresh();
@@ -404,7 +425,7 @@ private:
  * @tparam Exclude Types of storage used to filter the view.
  */
 template<typename... Get, typename... Exclude>
-class basic_view<get_t<Get...>, exclude_t<Exclude...>, std::enable_if_t<(sizeof...(Get) + sizeof...(Exclude) > 1)>>
+class basic_view<get_t<Get...>, exclude_t<Exclude...>, std::enable_if_t<(sizeof...(Get) != 0u)>>
     : public basic_common_view<std::common_type_t<typename Get::base_type..., typename Exclude::base_type...>, sizeof...(Get), sizeof...(Exclude)> {
     using base_type = basic_common_view<std::common_type_t<typename Get::base_type..., typename Exclude::base_type...>, sizeof...(Get), sizeof...(Exclude)>;
 
@@ -634,6 +655,8 @@ public:
  */
 template<typename Type, deletion_policy Policy>
 class basic_storage_view {
+    static_assert(std::is_same_v<std::remove_const_t<std::remove_reference_t<Type>>, Type>, "Unexpected type");
+
 protected:
     /*! @cond TURN_OFF_DOXYGEN */
     basic_storage_view() noexcept = default;
