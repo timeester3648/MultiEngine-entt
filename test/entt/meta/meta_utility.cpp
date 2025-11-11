@@ -11,16 +11,16 @@
 #include "../../common/empty.h"
 
 struct clazz {
-    void setter(int v) {
-        member = v;
+    void setter(int iv) {
+        member = iv;
     }
 
     [[nodiscard]] int getter() const {
         return member;
     }
 
-    static void static_setter(clazz &instance, int v) {
-        instance.member = v;
+    static void static_setter(clazz &instance, int iv) {
+        instance.member = iv;
     }
 
     [[nodiscard]] static int static_getter(const clazz &instance) {
@@ -35,9 +35,9 @@ struct clazz {
         return value;
     }
 
-    [[nodiscard]] static clazz factory(int v) {
+    [[nodiscard]] static clazz factory(int iv) {
         clazz instance{};
-        instance.member = v;
+        instance.member = iv;
         return instance;
     }
 
@@ -59,24 +59,44 @@ using MetaUtilityDeathTest = MetaUtility;
 TEST_F(MetaUtility, MetaDispatch) {
     int value = 2;
 
-    auto as_void = entt::meta_dispatch<entt::as_void_t>(value);
-    auto as_ref = entt::meta_dispatch<entt::as_ref_t>(value);
     auto as_cref = entt::meta_dispatch<entt::as_cref_t>(value);
-    auto as_is = entt::meta_dispatch(value);
+    auto as_ref = entt::meta_dispatch<entt::as_ref_t>(value);
+    auto as_void = entt::meta_dispatch<entt::as_void_t>(value);
+    auto as_is_copy = entt::meta_dispatch<entt::as_is_t>(static_cast<int &&>(value));
+    auto as_is_cref = entt::meta_dispatch<entt::as_is_t>(std::as_const(value));
+    auto as_is_ref = entt::meta_dispatch<entt::as_is_t>(value);
+    auto as_value = entt::meta_dispatch(value);
 
-    ASSERT_EQ(as_void.type(), entt::resolve<void>());
-    ASSERT_EQ(as_ref.type(), entt::resolve<int>());
     ASSERT_EQ(as_cref.type(), entt::resolve<int>());
-    ASSERT_EQ(as_is.type(), entt::resolve<int>());
+    ASSERT_EQ(as_ref.type(), entt::resolve<int>());
+    ASSERT_EQ(as_void.type(), entt::resolve<void>());
+    ASSERT_EQ(as_is_copy.type(), entt::resolve<int>());
+    ASSERT_EQ(as_is_cref.type(), entt::resolve<int>());
+    ASSERT_EQ(as_is_ref.type(), entt::resolve<int>());
+    ASSERT_EQ(as_value.type(), entt::resolve<int>());
 
-    ASSERT_NE(as_is.try_cast<int>(), nullptr);
-    ASSERT_NE(as_ref.try_cast<int>(), nullptr);
+    ASSERT_EQ(as_cref.base().policy(), entt::any_policy::cref);
+    ASSERT_EQ(as_ref.base().policy(), entt::any_policy::ref);
+    ASSERT_EQ(as_void.base().policy(), entt::any_policy::empty);
+    ASSERT_EQ(as_is_copy.base().policy(), entt::any_policy::embedded);
+    ASSERT_EQ(as_is_cref.base().policy(), entt::any_policy::cref);
+    ASSERT_EQ(as_is_ref.base().policy(), entt::any_policy::ref);
+    ASSERT_EQ(as_value.base().policy(), entt::any_policy::embedded);
+
     ASSERT_EQ(as_cref.try_cast<int>(), nullptr);
     ASSERT_NE(as_cref.try_cast<const int>(), nullptr);
+    ASSERT_NE(as_ref.try_cast<int>(), nullptr);
+    ASSERT_NE(as_is_copy.try_cast<int>(), nullptr);
+    ASSERT_EQ(as_is_cref.try_cast<int>(), nullptr);
+    ASSERT_NE(as_is_ref.try_cast<int>(), nullptr);
+    ASSERT_NE(as_value.try_cast<int>(), nullptr);
 
-    ASSERT_EQ(as_is.cast<int>(), 2);
-    ASSERT_EQ(as_ref.cast<int>(), 2);
     ASSERT_EQ(as_cref.cast<int>(), 2);
+    ASSERT_EQ(as_ref.cast<int>(), 2);
+    ASSERT_EQ(as_is_copy.cast<int>(), 2);
+    ASSERT_EQ(as_is_cref.cast<int>(), 2);
+    ASSERT_EQ(as_is_ref.cast<int>(), 2);
+    ASSERT_EQ(as_value.cast<int>(), 2);
 }
 
 TEST_F(MetaUtility, MetaDispatchMetaAny) {
@@ -190,7 +210,8 @@ TEST_F(MetaUtility, MetaGetter) {
 
 TEST_F(MetaUtility, MetaInvokeWithCandidate) {
     std::array args{entt::meta_any{clazz{}}, entt::meta_any{4}};
-    args[0u].cast<clazz &>().value = 3;
+
+    clazz::value = 3;
 
     ASSERT_FALSE((entt::meta_invoke<clazz>({}, &clazz::setter, std::next(args.data()))));
     ASSERT_FALSE((entt::meta_invoke<clazz>({}, &clazz::getter, nullptr)));
@@ -213,7 +234,8 @@ TEST_F(MetaUtility, MetaInvokeWithCandidate) {
 
 TEST_F(MetaUtility, MetaInvoke) {
     std::array args{entt::meta_any{clazz{}}, entt::meta_any{4}};
-    args[0u].cast<clazz &>().value = 3;
+
+    clazz::value = 3;
 
     ASSERT_FALSE((entt::meta_invoke<clazz, &clazz::setter>({}, std::next(args.data()))));
     ASSERT_FALSE((entt::meta_invoke<clazz, &clazz::getter>({}, nullptr)));

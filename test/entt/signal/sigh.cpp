@@ -2,11 +2,12 @@
 #include <utility>
 #include <gtest/gtest.h>
 #include <entt/signal/sigh.hpp>
+#include "../../common/config.h"
 #include "../../common/linter.hpp"
 
 struct sigh_listener {
-    static void f(int &v) {
-        ++v;
+    static void f(int &iv) {
+        ++iv;
     }
 
     [[nodiscard]] bool g(int) {
@@ -14,13 +15,13 @@ struct sigh_listener {
         return true;
     }
 
-    [[nodiscard]] bool h(const int &) {
+    [[nodiscard]] bool h(const int &) const {
         return val;
     }
 
     // useless definition just because msvc does weird things if both are empty
     void i() {
-        val = true && val;
+        val = val && val;
     }
 
     bool val{false};
@@ -52,12 +53,32 @@ void connect_and_auto_disconnect(entt::sigh<void(int &)> &sigh, const int &) {
     sink.disconnect<&connect_and_auto_disconnect>(sigh);
 }
 
+ENTT_DEBUG_TEST(SinkDeathTest, Invalid) {
+    sigh_listener listener;
+    entt::sigh<void(int &)> sigh;
+    entt::sink<entt::sigh<void(int &)>> sink{};
+
+    ASSERT_FALSE(sink);
+
+    ASSERT_DEATH([[maybe_unused]] const bool empty = sink.empty(), "");
+    ASSERT_DEATH(sink.connect<&sigh_listener::f>(), "");
+    ASSERT_DEATH(sink.disconnect<&sigh_listener::f>(), "");
+    ASSERT_DEATH(sink.disconnect(&listener), "");
+    ASSERT_DEATH(sink.disconnect(), "");
+
+    sink = entt::sink{sigh};
+
+    ASSERT_TRUE(sink);
+    ASSERT_TRUE(sink.empty());
+}
+
 TEST(SigH, Lifetime) {
     using signal = entt::sigh<void(void)>;
 
     ASSERT_NO_THROW(signal{});
 
-    signal src{}, other{};
+    signal src{};
+    signal other{};
 
     ASSERT_NO_THROW(signal{src});
     ASSERT_NO_THROW(signal{std::move(other)});
@@ -142,53 +163,54 @@ TEST(SigH, Swap) {
 TEST(SigH, Functions) {
     entt::sigh<void(int &)> sigh;
     entt::sink sink{sigh};
-    int v = 0;
+    int value = 0;
 
     sink.connect<&sigh_listener::f>();
-    sigh.publish(v);
+    sigh.publish(value);
 
     ASSERT_FALSE(sigh.empty());
     ASSERT_EQ(sigh.size(), 1u);
-    ASSERT_EQ(v, 1);
+    ASSERT_EQ(value, 1);
 
-    v = 0;
+    value = 0;
     sink.disconnect<&sigh_listener::f>();
-    sigh.publish(v);
+    sigh.publish(value);
 
     ASSERT_TRUE(sigh.empty());
     ASSERT_EQ(sigh.size(), 0u);
-    ASSERT_EQ(v, 0);
+    ASSERT_EQ(value, 0);
 }
 
 TEST(SigH, FunctionsWithPayload) {
     entt::sigh<void()> sigh;
     entt::sink sink{sigh};
-    int v = 0;
+    int value = 0;
 
-    sink.connect<&sigh_listener::f>(v);
+    sink.connect<&sigh_listener::f>(value);
     sigh.publish();
 
     ASSERT_FALSE(sigh.empty());
     ASSERT_EQ(sigh.size(), 1u);
-    ASSERT_EQ(v, 1);
+    ASSERT_EQ(value, 1);
 
-    v = 0;
-    sink.disconnect<&sigh_listener::f>(v);
+    value = 0;
+    sink.disconnect<&sigh_listener::f>(value);
     sigh.publish();
 
     ASSERT_TRUE(sigh.empty());
     ASSERT_EQ(sigh.size(), 0u);
-    ASSERT_EQ(v, 0);
+    ASSERT_EQ(value, 0);
 
-    sink.connect<&sigh_listener::f>(v);
-    sink.disconnect(&v);
+    sink.connect<&sigh_listener::f>(value);
+    sink.disconnect(&value);
     sigh.publish();
 
-    ASSERT_EQ(v, 0);
+    ASSERT_EQ(value, 0);
 }
 
 TEST(SigH, Members) {
-    sigh_listener l1, l2;
+    sigh_listener l1;
+    sigh_listener l2;
     entt::sigh<bool(int)> sigh;
     entt::sink sink{sigh};
 
@@ -241,7 +263,7 @@ TEST(SigH, Collector) {
 
     auto bool_return = [&cnt](bool value) {
         // gtest and its macro hell are sometimes really annoying...
-        [](auto v) { ASSERT_TRUE(v); }(value);
+        [](auto curr) { ASSERT_TRUE(curr); }(value);
         ++cnt;
         return true;
     };
@@ -274,22 +296,22 @@ TEST(SigH, CollectorVoid) {
 TEST(SigH, Connection) {
     entt::sigh<void(int &)> sigh;
     entt::sink sink{sigh};
-    int v = 0;
+    int value = 0;
 
     auto conn = sink.connect<&sigh_listener::f>();
-    sigh.publish(v);
+    sigh.publish(value);
 
     ASSERT_FALSE(sigh.empty());
     ASSERT_TRUE(conn);
-    ASSERT_EQ(v, 1);
+    ASSERT_EQ(value, 1);
 
-    v = 0;
+    value = 0;
     conn.release();
-    sigh.publish(v);
+    sigh.publish(value);
 
     ASSERT_TRUE(sigh.empty());
     ASSERT_FALSE(conn);
-    ASSERT_EQ(0, v);
+    ASSERT_EQ(0, value);
 }
 
 TEST(SigH, ScopedConnection) {
@@ -460,26 +482,26 @@ TEST(SigH, ConnectAndAutoDisconnect) {
     sigh_listener listener;
     entt::sigh<void(int &)> sigh;
     entt::sink sink{sigh};
-    int v = 0;
+    int value = 0;
 
     sink.connect<&sigh_listener::g>(listener);
     sink.connect<&connect_and_auto_disconnect>(sigh);
 
     ASSERT_FALSE(listener.val);
     ASSERT_EQ(sigh.size(), 2u);
-    ASSERT_EQ(v, 0);
+    ASSERT_EQ(value, 0);
 
-    sigh.publish(v);
+    sigh.publish(value);
 
     ASSERT_TRUE(listener.val);
     ASSERT_EQ(sigh.size(), 2u);
-    ASSERT_EQ(v, 0);
+    ASSERT_EQ(value, 0);
 
-    sigh.publish(v);
+    sigh.publish(value);
 
     ASSERT_FALSE(listener.val);
     ASSERT_EQ(sigh.size(), 2u);
-    ASSERT_EQ(v, 1);
+    ASSERT_EQ(value, 1);
 }
 
 TEST(SigH, CustomAllocator) {

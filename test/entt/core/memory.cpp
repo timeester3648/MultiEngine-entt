@@ -22,7 +22,8 @@ TEST(ToAddress, Functionalities) {
 }
 
 TEST(PoccaPocmaAndPocs, Functionalities) {
-    test::basic_test_allocator<int> lhs, rhs;
+    test::basic_test_allocator<int> lhs;
+    test::basic_test_allocator<int> rhs;
     test::basic_test_allocator<int, std::false_type> no_pocs;
 
     // code coverage purposes
@@ -36,7 +37,8 @@ TEST(PoccaPocmaAndPocs, Functionalities) {
 }
 
 ENTT_DEBUG_TEST(PoccaPocmaAndPocsDeathTest, Functionalities) {
-    test::basic_test_allocator<int, std::false_type> lhs, rhs;
+    test::basic_test_allocator<int, std::false_type> lhs;
+    test::basic_test_allocator<int, std::false_type> rhs;
 
     ASSERT_DEATH(entt::propagate_on_container_swap(lhs, rhs), "");
 }
@@ -175,7 +177,6 @@ TEST(UninitializedConstructUsingAllocator, NoUsesAllocatorConstruction) {
     alignas(int) std::array<std::byte, sizeof(int)> storage{};
     const std::allocator<int> allocator{};
 
-    // NOLINTNEXTLINE(*-reinterpret-cast)
     int *value = entt::uninitialized_construct_using_allocator(reinterpret_cast<int *>(storage.data()), allocator, 1);
 
     ASSERT_EQ(*value, 1);
@@ -191,7 +192,6 @@ TEST(UninitializedConstructUsingAllocator, UsesAllocatorConstruction) {
     const std::pmr::polymorphic_allocator<string_type> allocator{&memory_resource};
     alignas(string_type) std::array<std::byte, sizeof(string_type)> storage{};
 
-    // NOLINTNEXTLINE(*-reinterpret-cast)
     string_type *value = entt::uninitialized_construct_using_allocator(reinterpret_cast<string_type *>(storage.data()), allocator, test::tracked_memory_resource::default_value);
 
     ASSERT_GT(memory_resource.do_allocate_counter(), 0u);

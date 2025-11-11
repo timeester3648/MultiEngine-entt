@@ -25,8 +25,8 @@ private:
 struct self_ptr {
     using element_type = self_ptr;
 
-    self_ptr(int v)
-        : value{v} {}
+    self_ptr(int val)
+        : value{val} {}
 
     const self_ptr &operator*() const {
         return *this;
@@ -38,8 +38,8 @@ struct self_ptr {
 struct proxy_ptr {
     using element_type = proxy_ptr;
 
-    proxy_ptr(int &v)
-        : value{&v} {}
+    proxy_ptr(int &val)
+        : value{&val} {}
 
     proxy_ptr operator*() const {
         return *this;
@@ -49,16 +49,14 @@ struct proxy_ptr {
 };
 
 template<typename Type>
-struct adl_wrapped_shared_ptr: wrapped_shared_ptr<Type> {};
+struct adl_wrapped_shared_ptr: wrapped_shared_ptr<Type> {
+    using is_meta_pointer_like = void;
+};
 
 template<typename Type>
-struct spec_wrapped_shared_ptr: wrapped_shared_ptr<Type> {};
-
-template<typename Type>
-struct entt::is_meta_pointer_like<adl_wrapped_shared_ptr<Type>>: std::true_type {};
-
-template<typename Type>
-struct entt::is_meta_pointer_like<spec_wrapped_shared_ptr<Type>>: std::true_type {};
+struct spec_wrapped_shared_ptr: wrapped_shared_ptr<Type> {
+    using is_meta_pointer_like = void;
+};
 
 template<>
 struct entt::is_meta_pointer_like<self_ptr>: std::true_type {};

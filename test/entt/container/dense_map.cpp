@@ -1,6 +1,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <iterator>
 #include <memory>
@@ -102,7 +103,7 @@ TEST(DenseMap, Constructors) {
     map = entt::dense_map<int, int>{2u * minimum_bucket_count, std::allocator<float>{}};
     map = entt::dense_map<int, int>{4u * minimum_bucket_count, std::hash<int>(), std::allocator<double>{}};
 
-    map.emplace(3u, 2u);
+    map.emplace(std::int8_t{3}, std::int8_t{2});
 
     entt::dense_map<int, int> temp{map, map.get_allocator()};
     const entt::dense_map<int, int> other{std::move(temp), map.get_allocator()};
@@ -492,7 +493,7 @@ TEST(DenseMap, InsertOrAssign) {
     ASSERT_EQ(it, --map.end());
     ASSERT_EQ(it->second, 64);
 
-    std::tie(it, result) = map.insert_or_assign(4, 8u);
+    std::tie(it, result) = map.insert_or_assign(4, std::int16_t{8});
 
     ASSERT_TRUE(result);
     ASSERT_EQ(map.size(), 3u);
@@ -502,7 +503,7 @@ TEST(DenseMap, InsertOrAssign) {
     ASSERT_EQ(it->first, 4);
     ASSERT_EQ(it->second, 8);
 
-    std::tie(it, result) = map.insert_or_assign(4, 64u);
+    std::tie(it, result) = map.insert_or_assign(4, std::int16_t{64});
 
     ASSERT_FALSE(result);
     ASSERT_EQ(map.size(), 3u);
@@ -959,7 +960,7 @@ TEST(DenseMap, EqualRange) {
 }
 
 TEST(DenseMap, Indexing) {
-    entt::dense_map<int, int> map;
+    entt::dense_map<int, int, entt::identity, test::transparent_equal_to> map;
     const auto &cmap = map;
     const auto key = 1;
 
@@ -969,16 +970,23 @@ TEST(DenseMap, Indexing) {
 
     ASSERT_TRUE(map.contains(key));
     ASSERT_EQ(map[int{key}], 3);
-    ASSERT_EQ(cmap.at(key), 3);
+
     ASSERT_EQ(map.at(key), 3);
+    ASSERT_EQ(cmap.at(key), 3);
+
+    ASSERT_EQ(map.at(static_cast<double>(key)), 3);
+    ASSERT_EQ(cmap.at(static_cast<double>(key)), 3);
 }
 
 ENTT_DEBUG_TEST(DenseMapDeathTest, Indexing) {
-    entt::dense_map<int, int> map;
+    entt::dense_map<int, int, entt::identity, test::transparent_equal_to> map;
     const auto &cmap = map;
 
-    ASSERT_DEATH([[maybe_unused]] auto value = cmap.at(0), "");
     ASSERT_DEATH([[maybe_unused]] auto value = map.at(3), "");
+    ASSERT_DEATH([[maybe_unused]] auto value = cmap.at(0), "");
+
+    ASSERT_DEATH([[maybe_unused]] auto value = map.at(3.), "");
+    ASSERT_DEATH([[maybe_unused]] auto value = cmap.at(0.), "");
 }
 
 TEST(DenseMap, LocalIterator) {
