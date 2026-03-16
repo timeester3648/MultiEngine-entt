@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
-#include <entt/core/attribute.h>
+#include <entt/config/config.h>
 #include "../types.h"
+#include "lib.h"
 
-ENTT_API const void *filter(const view_type &);
-
-TEST(Lib, View) {
+TEST(View, Shared) {
     view_type view{};
     const void *storage = filter(view);
 

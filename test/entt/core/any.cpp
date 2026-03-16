@@ -9,12 +9,9 @@
 #include <gtest/gtest.h>
 #include <entt/core/any.hpp>
 #include <entt/core/type_info.hpp>
-#include "../../common/aggregate.h"
 #include "../../common/config.h"
 #include "../../common/linter.hpp"
-#include "../../common/new_delete.h"
-#include "../../common/non_comparable.h"
-#include "../../common/non_movable.h"
+#include "../../common/value_type.h"
 
 template<std::size_t Len>
 struct tracker {
@@ -52,9 +49,29 @@ TEST(Any, Empty) {
     ASSERT_FALSE(any);
     ASSERT_FALSE(any.owner());
     ASSERT_EQ(any.policy(), entt::any_policy::empty);
-    ASSERT_EQ(any.type(), entt::type_id<void>());
+    ASSERT_EQ(any.info(), entt::type_id<void>());
     ASSERT_EQ(entt::any_cast<double>(&any), nullptr);
     ASSERT_EQ(any.data(), nullptr);
+}
+
+TEST(Any, EmptyAsRef) {
+    entt::any any{};
+
+    ASSERT_FALSE(any);
+    ASSERT_FALSE(any.owner());
+    ASSERT_EQ(any.policy(), entt::any_policy::empty);
+    ASSERT_EQ(any.info(), entt::type_id<void>());
+    ASSERT_EQ(entt::any_cast<double>(&any), nullptr);
+    ASSERT_EQ(any.data(), nullptr);
+
+    auto other = any.as_ref();
+
+    ASSERT_FALSE(other);
+    ASSERT_FALSE(other.owner());
+    ASSERT_EQ(other.policy(), entt::any_policy::empty);
+    ASSERT_EQ(other.info(), entt::type_id<void>());
+    ASSERT_EQ(entt::any_cast<double>(&other), nullptr);
+    ASSERT_EQ(other.data(), nullptr);
 }
 
 TEST(Any, HasValue) {
@@ -81,7 +98,7 @@ TEST(Any, SBO) {
     ASSERT_TRUE(any);
     ASSERT_TRUE(any.owner());
     ASSERT_EQ(any.policy(), entt::any_policy::embedded);
-    ASSERT_EQ(any.type(), entt::type_id<char>());
+    ASSERT_EQ(any.info(), entt::type_id<char>());
     ASSERT_EQ(entt::any_cast<double>(&any), nullptr);
     ASSERT_EQ(entt::any_cast<char>(any), 'c');
 }
@@ -93,7 +110,7 @@ TEST(Any, NoSBO) {
     ASSERT_TRUE(any);
     ASSERT_TRUE(any.owner());
     ASSERT_EQ(any.policy(), entt::any_policy::dynamic);
-    ASSERT_EQ(any.type(), entt::type_id<fat>());
+    ASSERT_EQ(any.info(), entt::type_id<fat>());
     ASSERT_EQ(entt::any_cast<double>(&any), nullptr);
     ASSERT_EQ(entt::any_cast<fat>(any), instance);
 }

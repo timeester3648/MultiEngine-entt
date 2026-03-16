@@ -4,10 +4,10 @@
 #include <cr.h>
 #include <entt/signal/dispatcher.hpp>
 #include <entt/signal/sigh.hpp>
-#include "../../../common/boxed_type.h"
 #include "../../../common/listener.h"
+#include "../../../common/value_type.h"
 
-TEST(Lib, Dispatcher) {
+TEST(Dispatcher, Plugin) {
     entt::dispatcher dispatcher;
     test::listener<test::boxed_int> listener;
 

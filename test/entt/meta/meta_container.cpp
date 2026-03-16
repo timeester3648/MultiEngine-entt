@@ -3,6 +3,8 @@
 #include <list>
 #include <map>
 #include <set>
+#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include <gtest/gtest.h>
@@ -12,8 +14,7 @@
 #include <entt/meta/meta.hpp>
 #include <entt/meta/resolve.hpp>
 #include "../../common/config.h"
-#include "../../common/empty.h"
-#include "../../common/non_default_constructible.h"
+#include "../../common/value_type.h"
 
 TEST(MetaContainer, Invalid) {
     ASSERT_FALSE(entt::meta_any{0}.as_sequence_container());
@@ -61,6 +62,26 @@ TEST(SequenceContainer, Iterator) {
 
     ASSERT_EQ((first--)->cast<int>(), 4);
     ASSERT_EQ((--first)->cast<int>(), 2);
+}
+
+TEST(SequenceContainer, StdString) {
+    std::string str{};
+    auto any = entt::forward_as_meta(str);
+    auto view = any.as_sequence_container();
+    auto cview = std::as_const(any).as_sequence_container();
+
+    ASSERT_FALSE(view);
+    ASSERT_FALSE(cview);
+}
+
+TEST(SequenceContainer, StdStringView) {
+    std::string_view str{};
+    auto any = entt::forward_as_meta(str);
+    auto view = any.as_sequence_container();
+    auto cview = std::as_const(any).as_sequence_container();
+
+    ASSERT_FALSE(view);
+    ASSERT_FALSE(cview);
 }
 
 TEST(SequenceContainer, StdVector) {
@@ -119,8 +140,8 @@ TEST(SequenceContainer, StdVector) {
 }
 
 TEST(SequenceContainer, StdVectorBool) {
-    using proxy_type = typename std::vector<bool>::reference;
-    using const_proxy_type = typename std::vector<bool>::const_reference;
+    using proxy_type = std::vector<bool>::reference;
+    using const_proxy_type = std::vector<bool>::const_reference;
 
     std::vector<bool> vec{};
     auto any = entt::forward_as_meta(vec);

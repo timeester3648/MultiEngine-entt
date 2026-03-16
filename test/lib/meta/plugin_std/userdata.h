@@ -6,13 +6,12 @@
 #include <entt/core/type_info.hpp>
 #include <entt/meta/context.hpp>
 #include <entt/meta/meta.hpp>
-#include "../../../common/boxed_type.h"
-#include "../../../common/empty.h"
+#include "../../../common/value_type.h"
 
 #define ASSIGN_TYPE_ID(clazz) \
     template<> \
     struct entt::type_hash<clazz> { \
-        static constexpr entt::id_type value() noexcept { \
+        static ENTT_CONSTEVAL entt::id_type value() noexcept { \
             return entt::basic_hashed_string<std::remove_const_t<std::remove_pointer_t<std::decay_t<decltype(#clazz)>>>>{#clazz}; \
         } \
     }

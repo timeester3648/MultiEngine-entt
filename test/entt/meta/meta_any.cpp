@@ -14,77 +14,77 @@
 #include <entt/meta/resolve.hpp>
 #include "../../common/config.h"
 #include "../../common/linter.hpp"
-#include "../../common/non_comparable.h"
-
-struct clazz {
-    void member(int iv) {
-        value = iv;
-    }
-
-    static char func() {
-        return 'c';
-    }
-
-    operator int() const {
-        return value;
-    }
-
-    int value{0};
-};
-
-struct empty {
-    empty() = default;
-
-    empty(const empty &) = default;
-    empty &operator=(const empty &) = default;
-
-    virtual ~empty() {
-        ++counter;
-    }
-
-    inline static int counter = 0; // NOLINT
-};
-
-struct fat: empty {
-    fat()
-        : value{.0, .0, .0, .0} {}
-
-    fat(double v1, double v2, double v3, double v4)
-        : value{v1, v2, v3, v4} {}
-
-    ~fat() override = default;
-
-    fat(const fat &) = default;
-    fat &operator=(const fat &) = default;
-
-    bool operator==(const fat &other) const {
-        return (value == other.value);
-    }
-
-    std::array<double, 4u> value{};
-};
-
-enum class enum_class : std::uint8_t {
-    foo = 0u,
-    bar = 1u
-};
-
-struct unmanageable {
-    unmanageable()
-        : value{std::make_unique<int>(3)} {}
-
-    ~unmanageable() = default;
-
-    unmanageable(const unmanageable &) = delete;
-    unmanageable(unmanageable &&) = delete;
-
-    unmanageable &operator=(const unmanageable &) = delete;
-    unmanageable &operator=(unmanageable &&) = delete;
-
-    std::unique_ptr<int> value;
-};
+#include "../../common/value_type.h"
 
 struct MetaAny: ::testing::Test {
+    struct clazz {
+        void member(int iv) {
+            value = iv;
+        }
+
+        static char func() {
+            return 'c';
+        }
+
+        operator int() const {
+            return value;
+        }
+
+        int value{0};
+    };
+
+    struct empty {
+        empty() = default;
+
+        empty(const empty &) = default;
+        empty &operator=(const empty &) = default;
+
+        virtual ~empty() {
+            ++counter;
+        }
+
+        inline static int counter = 0; // NOLINT
+    };
+
+    struct fat: empty {
+        fat()
+            : value{.0, .0, .0, .0} {}
+
+        fat(double v1, double v2, double v3, double v4)
+            : value{v1, v2, v3, v4} {}
+
+        ~fat() override = default;
+
+        fat(const fat &) = default;
+        fat &operator=(const fat &) = default;
+
+        bool operator==(const fat &other) const {
+            return (value == other.value);
+        }
+
+        std::array<double, 4u> value{};
+    };
+
+    enum class enum_class : std::uint8_t {
+        foo = 0u,
+        bar = 1u
+    };
+
+    struct unmanageable {
+        unmanageable()
+            : value{std::make_unique<int>(3)} {}
+
+        ~unmanageable() = default;
+
+        unmanageable(const unmanageable &) = delete;
+        unmanageable(unmanageable &&) = delete;
+
+        unmanageable &operator=(const unmanageable &) = delete;
+        unmanageable &operator=(unmanageable &&) = delete;
+
+        std::unique_ptr<int> value;
+    };
+
     void SetUp() override {
         using namespace entt::literals;
 
@@ -129,6 +129,22 @@ TEST_F(MetaAny, Empty) {
     ASSERT_FALSE(std::as_const(any).as_ref());
     ASSERT_FALSE(std::as_const(any).as_sequence_container());
     ASSERT_FALSE(std::as_const(any).as_associative_container());
+}
+
+TEST_F(MetaAny, EmptyAsRef) {
+    entt::meta_any any{};
+
+    ASSERT_FALSE(any);
+    ASSERT_FALSE(any.type());
+    ASSERT_EQ(any.base().data(), nullptr);
+    ASSERT_EQ(any, entt::meta_any{});
+
+    auto other = any.as_ref();
+
+    ASSERT_FALSE(other);
+    ASSERT_FALSE(other.type());
+    ASSERT_EQ(other.base().data(), nullptr);
+    ASSERT_EQ(other, entt::meta_any{});
 }
 
 TEST_F(MetaAny, Context) {
@@ -1600,4 +1616,25 @@ TEST_F(MetaAny, ForwardAsMeta) {
 
     ASSERT_NE(any.base().data(), &value);
     ASSERT_EQ(ref.base().data(), &value);
+}
+
+TEST_F(MetaAny, NonCopyableType) {
+    const std::unique_ptr<int> value{};
+    entt::meta_any any{std::in_place_type<std::unique_ptr<int>>};
+    entt::meta_any other = entt::forward_as_meta(value);
+
+    ASSERT_TRUE(any);
+    ASSERT_TRUE(other);
+
+    ASSERT_FALSE(any.assign(std::move(other)));
+
+    entt::meta_any copy{any};
+
+    ASSERT_TRUE(any);
+    ASSERT_FALSE(copy);
+
+    copy = any;
+
+    ASSERT_TRUE(any);
+    ASSERT_FALSE(copy);
 }

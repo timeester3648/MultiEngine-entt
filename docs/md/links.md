@@ -145,6 +145,10 @@ I hope the following lists can grow much more in the future.
     a roguelite top-down shooter with a high-contrast vector line aesthetic.
   * [EnTT Dino](https://github.com/omgitsaheadcrab/entt_dino): a Dinosaur Game
     clone in C++ using only `SDL2` and `EnTT`.
+  * [Bim!](https://github.com/j-jorge/bim): a last-man-standing arcade online
+    game for Android.
+  * [MonsterWar](https://github.com/WispSnow/MonsterWar): a tower defense game
+    developed in C++ with `SDL3`, `EnTT`, and a few other libraries.
 
 ## Engines and the like:
 
@@ -247,6 +251,9 @@ I hope the following lists can grow much more in the future.
     (or those yet to be).
   * [Physecs](https://github.com/thfProjects/Physecs): real-time 3D rigid body
     physics simulation built on `EnTT`.
+  * [KODZA](https://gitlab.com/arqitek/kodza/): A work in progress game engine.
+  * [Omnix](https://github.com/Ace-codes-swift/Omnix): An under-development,
+    multi-purpose 3D engine for `macOS`, using `EnTT` for the ECS.
 
 ## Articles, videos and blog posts:
 
@@ -327,6 +334,9 @@ I hope the following lists can grow much more in the future.
     [Collector](https://play.google.com/store/apps/details?id=com.esri.arcgis.collector)
     and
     [Navigator](https://play.google.com/store/apps/details?id=com.esri.navigator).
+  * [OneArc](https://onearc.com/): [licenses](https://onearc.com/third-party-licensors/)
+    do not lie. Their products use EnTT in some way, but it is not known _what_
+    way.
   * [FASTSUITE Edition 2](https://www.fastsuite.com/en_EN/fastsuite/fastsuite-edition-2.html)
     by [Cenit](http://www.cenit.com/en_EN/about-us/overview.html): they use
     `EnTT` to drive their simulation, that is, the communication between robot

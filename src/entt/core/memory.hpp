@@ -7,23 +7,9 @@
 #include <type_traits>
 #include <utility>
 #include "../config/config.h"
+#include "../stl/memory.hpp"
 
 namespace entt {
-
-/**
- * @brief Unwraps fancy pointers, does nothing otherwise (waiting for C++20).
- * @tparam Type Pointer type.
- * @param ptr Fancy or raw pointer.
- * @return A raw pointer that represents the address of the original pointer.
- */
-template<typename Type>
-[[nodiscard]] constexpr auto to_address(Type &&ptr) noexcept {
-    if constexpr(std::is_pointer_v<std::decay_t<Type>>) {
-        return ptr;
-    } else {
-        return to_address(std::forward<Type>(ptr).operator->());
-    }
-}
 
 /**
  * @brief Utility function to design allocation-aware containers.
@@ -76,7 +62,7 @@ struct allocation_deleter: private Allocator {
     /*! @brief Allocator type. */
     using allocator_type = Allocator;
     /*! @brief Pointer type. */
-    using pointer = typename std::allocator_traits<Allocator>::pointer;
+    using pointer = std::allocator_traits<Allocator>::pointer;
 
     /**
      * @brief Inherited constructors.
@@ -91,7 +77,7 @@ struct allocation_deleter: private Allocator {
      */
     constexpr void operator()(pointer ptr) noexcept(std::is_nothrow_destructible_v<typename allocator_type::value_type>) {
         using alloc_traits = std::allocator_traits<Allocator>;
-        alloc_traits::destroy(*this, to_address(ptr));
+        alloc_traits::destroy(*this, stl::to_address(ptr));
         alloc_traits::deallocate(*this, ptr, 1u);
     }
 };
@@ -106,17 +92,17 @@ struct allocation_deleter: private Allocator {
  * @return A properly initialized unique pointer with a custom deleter.
  */
 template<typename Type, typename Allocator, typename... Args>
-ENTT_CONSTEXPR auto allocate_unique(Allocator &allocator, Args &&...args) {
+constexpr auto allocate_unique(Allocator &allocator, Args &&...args) {
     static_assert(!std::is_array_v<Type>, "Array types are not supported");
 
-    using alloc_traits = typename std::allocator_traits<Allocator>::template rebind_traits<Type>;
-    using allocator_type = typename alloc_traits::allocator_type;
+    using alloc_traits = std::allocator_traits<Allocator>::template rebind_traits<Type>;
+    using allocator_type = alloc_traits::allocator_type;
 
     allocator_type alloc{allocator};
     auto ptr = alloc_traits::allocate(alloc, 1u);
 
     ENTT_TRY {
-        alloc_traits::construct(alloc, to_address(ptr), std::forward<Args>(args)...);
+        alloc_traits::construct(alloc, stl::to_address(ptr), std::forward<Args>(args)...);
     }
     ENTT_CATCH {
         alloc_traits::deallocate(alloc, ptr, 1u);
@@ -126,7 +112,7 @@ ENTT_CONSTEXPR auto allocate_unique(Allocator &allocator, Args &&...args) {
     return std::unique_ptr<Type, allocation_deleter<allocator_type>>{ptr, alloc};
 }
 
-/*! @cond TURN_OFF_DOXYGEN */
+/*! @cond ENTT_INTERNAL */
 namespace internal {
 
 template<typename Type>
@@ -152,31 +138,30 @@ template<typename Type, typename Other>
 struct uses_allocator_construction<std::pair<Type, Other>> {
     using type = std::pair<Type, Other>;
 
-    template<typename Allocator, typename First, typename Second>
-    static constexpr auto args(const Allocator &allocator, std::piecewise_construct_t, First &&first, Second &&second) noexcept {
+    template<typename First, typename Second>
+    static constexpr auto args(const auto &allocator, std::piecewise_construct_t, First &&first, Second &&second) noexcept {
         return std::make_tuple(
             std::piecewise_construct,
             std::apply([&allocator](auto &&...curr) { return uses_allocator_construction<Type>::args(allocator, std::forward<decltype(curr)>(curr)...); }, std::forward<First>(first)),
             std::apply([&allocator](auto &&...curr) { return uses_allocator_construction<Other>::args(allocator, std::forward<decltype(curr)>(curr)...); }, std::forward<Second>(second)));
     }
 
-    template<typename Allocator>
-    static constexpr auto args(const Allocator &allocator) noexcept {
+    static constexpr auto args(const auto &allocator) noexcept {
         return uses_allocator_construction<type>::args(allocator, std::piecewise_construct, std::tuple<>{}, std::tuple<>{});
     }
 
-    template<typename Allocator, typename First, typename Second>
-    static constexpr auto args(const Allocator &allocator, First &&first, Second &&second) noexcept {
+    template<typename First, typename Second>
+    static constexpr auto args(const auto &allocator, First &&first, Second &&second) noexcept {
         return uses_allocator_construction<type>::args(allocator, std::piecewise_construct, std::forward_as_tuple(std::forward<First>(first)), std::forward_as_tuple(std::forward<Second>(second)));
     }
 
-    template<typename Allocator, typename First, typename Second>
-    static constexpr auto args(const Allocator &allocator, const std::pair<First, Second> &value) noexcept {
+    template<typename First, typename Second>
+    static constexpr auto args(const auto &allocator, const std::pair<First, Second> &value) noexcept {
         return uses_allocator_construction<type>::args(allocator, std::piecewise_construct, std::forward_as_tuple(value.first), std::forward_as_tuple(value.second));
     }
 
-    template<typename Allocator, typename First, typename Second>
-    static constexpr auto args(const Allocator &allocator, std::pair<First, Second> &&value) noexcept {
+    template<typename First, typename Second>
+    static constexpr auto args(const auto &allocator, std::pair<First, Second> &&value) noexcept {
         return uses_allocator_construction<type>::args(allocator, std::piecewise_construct, std::forward_as_tuple(std::move(value.first)), std::forward_as_tuple(std::move(value.second)));
     }
 };
@@ -191,14 +176,13 @@ struct uses_allocator_construction<std::pair<Type, Other>> {
  * create an object of a given type by means of uses-allocator construction.
  *
  * @tparam Type Type to return arguments for.
- * @tparam Allocator Type of allocator used to manage memory and elements.
  * @tparam Args Types of arguments to use to construct the object.
  * @param allocator The allocator to use.
  * @param args Parameters to use to construct the object.
  * @return The arguments needed to create an object of the given type.
  */
-template<typename Type, typename Allocator, typename... Args>
-constexpr auto uses_allocator_construction_args(const Allocator &allocator, Args &&...args) noexcept {
+template<typename Type, typename... Args>
+constexpr auto uses_allocator_construction_args(const auto &allocator, Args &&...args) noexcept {
     return internal::uses_allocator_construction<Type>::args(allocator, std::forward<Args>(args)...);
 }
 
@@ -209,14 +193,13 @@ constexpr auto uses_allocator_construction_args(const Allocator &allocator, Args
  * means of uses-allocator construction.
  *
  * @tparam Type Type of object to create.
- * @tparam Allocator Type of allocator used to manage memory and elements.
  * @tparam Args Types of arguments to use to construct the object.
  * @param allocator The allocator to use.
  * @param args Parameters to use to construct the object.
  * @return A newly created object of the given type.
  */
-template<typename Type, typename Allocator, typename... Args>
-constexpr Type make_obj_using_allocator(const Allocator &allocator, Args &&...args) {
+template<typename Type, typename... Args>
+constexpr Type make_obj_using_allocator(const auto &allocator, Args &&...args) {
     return std::make_from_tuple<Type>(internal::uses_allocator_construction<Type>::args(allocator, std::forward<Args>(args)...));
 }
 
@@ -227,15 +210,14 @@ constexpr Type make_obj_using_allocator(const Allocator &allocator, Args &&...ar
  * means of uses-allocator construction at an uninitialized memory location.
  *
  * @tparam Type Type of object to create.
- * @tparam Allocator Type of allocator used to manage memory and elements.
  * @tparam Args Types of arguments to use to construct the object.
  * @param value Memory location in which to place the object.
  * @param allocator The allocator to use.
  * @param args Parameters to use to construct the object.
  * @return A pointer to the newly created object of the given type.
  */
-template<typename Type, typename Allocator, typename... Args>
-constexpr Type *uninitialized_construct_using_allocator(Type *value, const Allocator &allocator, Args &&...args) {
+template<typename Type, typename... Args>
+constexpr Type *uninitialized_construct_using_allocator(Type *value, const auto &allocator, Args &&...args) {
     return std::apply([value](auto &&...curr) { return ::new(value) Type(std::forward<decltype(curr)>(curr)...); }, internal::uses_allocator_construction<Type>::args(allocator, std::forward<Args>(args)...));
 }
 

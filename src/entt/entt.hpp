@@ -10,9 +10,9 @@ namespace entt {}
 #include "container/table.hpp"
 #include "core/algorithm.hpp"
 #include "core/any.hpp"
-#include "core/attribute.h"
 #include "core/bit.hpp"
 #include "core/compressed_pair.hpp"
+#include "core/concepts.hpp"
 #include "core/enum.hpp"
 #include "core/family.hpp"
 #include "core/hashed_string.hpp"
@@ -66,4 +66,7 @@ namespace entt {}
 #include "signal/dispatcher.hpp"
 #include "signal/emitter.hpp"
 #include "signal/sigh.hpp"
+#include "stl/functional.hpp"
+#include "stl/iterator.hpp"
+#include "stl/memory.hpp"
 // IWYU pragma: end_exports

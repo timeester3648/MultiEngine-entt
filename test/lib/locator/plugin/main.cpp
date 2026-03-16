@@ -3,10 +3,10 @@
 #include <gtest/gtest.h>
 #include <cr.h>
 #include <entt/locator/locator.hpp>
-#include "../../../common/boxed_type.h"
+#include "../../../common/value_type.h"
 #include "userdata.h"
 
-TEST(Lib, Locator) {
+TEST(Locator, Plugin) {
     entt::locator<test::boxed_int>::emplace().value = 4;
 
     ASSERT_EQ(entt::locator<test::boxed_int>::value().value, 4);

@@ -16,6 +16,8 @@ struct throwing_type {
         }
     }
 
+    ~throwing_type() { /* make it non trivially destructible */ }
+
     throwing_type &operator=(const throwing_type &other) {
         trigger = other.trigger;
         return *this;
@@ -29,13 +31,13 @@ struct throwing_type {
         return trigger;
     }
 
+    [[nodiscard]] bool operator==(const throwing_type &other) const noexcept {
+        return trigger == other.trigger;
+    }
+
 private:
     bool trigger{};
 };
-
-inline bool operator==(const throwing_type &lhs, const throwing_type &rhs) {
-    return lhs.throw_on_copy() == rhs.throw_on_copy();
-}
 
 } // namespace test
 

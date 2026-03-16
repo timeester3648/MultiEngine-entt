@@ -1,8 +1,7 @@
 #include <type_traits>
 #include <gtest/gtest.h>
 #include <entt/core/ident.hpp>
-#include "../../common/boxed_type.h"
-#include "../../common/empty.h"
+#include "../../common/value_type.h"
 
 TEST(Ident, Uniqueness) {
     using id = entt::ident<test::empty, test::boxed_int>;
@@ -27,7 +26,7 @@ TEST(Ident, Uniqueness) {
     }
 }
 
-TEST(Identifier, SingleType) {
+TEST(Ident, SingleType) {
     using id = entt::ident<test::empty>;
     [[maybe_unused]] const std::integral_constant<id::value_type, id::value<test::empty>> ic;
 }

@@ -203,14 +203,12 @@ public:
                 } else {
                     func();
                 }
-            } else {
-                if constexpr(std::is_invocable_r_v<bool, Func, Ret>) {
-                    if(func(calls[pos - 1u](args...))) {
-                        break;
-                    }
-                } else {
-                    func(calls[pos - 1u](args...));
+            } else if constexpr(std::is_invocable_r_v<bool, Func, Ret>) {
+                if(func(calls[pos - 1u](args...))) {
+                    break;
                 }
+            } else {
+                func(calls[pos - 1u](args...));
             }
         }
     }
@@ -359,8 +357,8 @@ private:
 template<typename Ret, typename... Args, typename Allocator>
 class sink<sigh<Ret(Args...), Allocator>> {
     using signal_type = sigh<Ret(Args...), Allocator>;
-    using delegate_type = typename signal_type::delegate_type;
-    using difference_type = typename signal_type::container_type::difference_type;
+    using delegate_type = signal_type::delegate_type;
+    using difference_type = signal_type::container_type::difference_type;
 
     template<auto Candidate, typename Type>
     static void release(Type value_or_instance, void *signal) {

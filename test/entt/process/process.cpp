@@ -2,7 +2,7 @@
 #include <memory>
 #include <gtest/gtest.h>
 #include <entt/process/process.hpp>
-#include "../../common/empty.h"
+#include "../../common/value_type.h"
 
 template<typename Delta>
 class test_process: public entt::basic_process<Delta> {
@@ -45,7 +45,7 @@ public:
 };
 
 class test_plain_process: public entt::process {
-    using delta_type = typename entt::process::delta_type;
+    using delta_type = entt::process::delta_type;
     void update(const delta_type, void *) override {}
 };
 

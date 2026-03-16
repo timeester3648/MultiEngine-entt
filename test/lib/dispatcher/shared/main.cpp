@@ -1,14 +1,13 @@
 #include <gtest/gtest.h>
-#include <entt/core/attribute.h>
+#include <entt/config/config.h>
 #include <entt/core/utility.hpp>
 #include <entt/signal/dispatcher.hpp>
 #include <entt/signal/sigh.hpp>
-#include "../../../common/boxed_type.h"
 #include "../../../common/listener.h"
+#include "../../../common/value_type.h"
+#include "lib.h"
 
-ENTT_API void trigger(entt::dispatcher &);
-
-TEST(Lib, Dispatcher) {
+TEST(Dispatcher, Shared) {
     entt::dispatcher dispatcher;
     test::listener<test::boxed_int> listener;
 

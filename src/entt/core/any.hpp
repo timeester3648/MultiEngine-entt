@@ -1,11 +1,13 @@
 #ifndef ENTT_CORE_ANY_HPP
 #define ENTT_CORE_ANY_HPP
 
+#include <concepts>
 #include <cstddef>
 #include <memory>
 #include <type_traits>
 #include <utility>
 #include "../config/config.h"
+#include "../core/concepts.hpp"
 #include "fwd.hpp"
 #include "type_info.hpp"
 #include "type_traits.hpp"
@@ -13,7 +15,7 @@
 
 namespace entt {
 
-/*! @cond TURN_OFF_DOXYGEN */
+/*! @cond ENTT_INTERNAL */
 namespace internal {
 
 enum class any_request : std::uint8_t {
@@ -66,39 +68,38 @@ class basic_any: private internal::basic_any_storage<Len, Align> {
     template<typename Type>
     static constexpr bool in_situ_v = internal::in_situ<Type, Len, Align>::value;
 
-    template<typename Type>
+    template<cvref_unqualified Type>
     static const void *basic_vtable(const request req, const basic_any &value, const void *other) {
-        static_assert(std::is_same_v<std::remove_const_t<std::remove_reference_t<Type>>, Type>, "Invalid type");
-
         switch(const auto *elem = static_cast<const Type *>(value.data()); req) {
-        case request::info:
+            using enum internal::any_request;
+        case info:
             return &type_id<Type>();
-        case request::transfer:
+        case transfer:
             if constexpr(std::is_move_assignable_v<Type>) {
                 // NOLINTNEXTLINE(bugprone-casting-through-void)
                 *const_cast<Type *>(elem) = std::move(*static_cast<Type *>(const_cast<void *>(other)));
                 return other;
             }
             [[fallthrough]];
-        case request::assign:
+        case assign:
             if constexpr(std::is_copy_assignable_v<Type>) {
                 *const_cast<Type *>(elem) = *static_cast<const Type *>(other);
                 return other;
             }
             break;
-        case request::compare:
+        case compare:
             if constexpr(!std::is_function_v<Type> && !std::is_array_v<Type> && is_equality_comparable_v<Type>) {
                 return (*elem == *static_cast<const Type *>(other)) ? other : nullptr;
             } else {
                 return (elem == other) ? other : nullptr;
             }
-        case request::copy:
+        case copy:
             if constexpr(std::is_copy_constructible_v<Type>) {
                 // NOLINTNEXTLINE(bugprone-casting-through-void)
                 static_cast<basic_any *>(const_cast<void *>(other))->initialize<Type>(*elem);
             }
             break;
-        case request::move:
+        case move:
             ENTT_ASSERT(value.mode == any_policy::embedded, "Unexpected policy");
             if constexpr(in_situ_v<Type>) {
                 // NOLINTNEXTLINE(bugprone-casting-through-void, bugprone-multi-level-implicit-pointer-conversion)
@@ -109,9 +110,8 @@ class basic_any: private internal::basic_any_storage<Len, Align> {
         return nullptr;
     }
 
-    template<typename Type>
+    template<cvref_unqualified Type>
     static void basic_deleter(const basic_any &value) {
-        static_assert(std::is_same_v<std::remove_const_t<std::remove_reference_t<Type>>, Type>, "Invalid type");
         ENTT_ASSERT((value.mode == any_policy::dynamic) || ((value.mode == any_policy::embedded) && !std::is_trivially_destructible_v<Type>), "Unexpected policy");
 
         const auto *elem = static_cast<const Type *>(value.data());
@@ -127,9 +127,10 @@ class basic_any: private internal::basic_any_storage<Len, Align> {
 
     template<typename Type, typename... Args>
     void initialize([[maybe_unused]] Args &&...args) {
-        using plain_type = std::remove_const_t<std::remove_reference_t<Type>>;
+        using plain_type = std::remove_cvref_t<Type>;
 
         vtable = basic_vtable<plain_type>;
+        underlying_type = type_hash<plain_type>::value();
 
         if constexpr(std::is_void_v<Type>) {
             deleter = nullptr;
@@ -205,10 +206,9 @@ public:
      * @param value A pointer to an object to take ownership of.
      */
     template<typename Type>
+    requires (!std::is_const_v<Type> && !std::is_void_v<Type>)
     explicit basic_any(std::in_place_t, Type *value)
         : base_type{} {
-        static_assert(!std::is_const_v<Type> && !std::is_void_v<Type>, "Non-const non-void pointer required");
-
         if(value == nullptr) {
             initialize<void>();
         } else {
@@ -223,7 +223,8 @@ public:
      * @tparam Type Type of object to use to initialize the wrapper.
      * @param value An instance of an object to use to initialize the wrapper.
      */
-    template<typename Type, typename = std::enable_if_t<!std::is_same_v<std::decay_t<Type>, basic_any>>>
+    template<typename Type>
+    requires (!std::same_as<std::remove_cvref_t<Type>, basic_any>)
     basic_any(Type &&value)
         : basic_any{std::in_place_type<std::decay_t<Type>>, std::forward<Type>(value)} {}
 
@@ -244,6 +245,7 @@ public:
         : base_type{},
           vtable{other.vtable},
           deleter{other.deleter},
+          underlying_type{other.underlying_type},
           mode{other.mode} {
         if(other.mode == any_policy::embedded) {
             other.vtable(request::move, other, this);
@@ -293,6 +295,7 @@ public:
 
             vtable = other.vtable;
             deleter = other.deleter;
+            underlying_type = other.underlying_type;
             mode = other.mode;
         }
 
@@ -305,7 +308,8 @@ public:
      * @param value An instance of an object to use to initialize the wrapper.
      * @return This any object.
      */
-    template<typename Type, typename = std::enable_if_t<!std::is_same_v<std::decay_t<Type>, basic_any>>>
+    template<typename Type>
+    requires (!std::same_as<std::remove_cvref_t<Type>, basic_any>)
     basic_any &operator=(Type &&value) {
         emplace<std::decay_t<Type>>(std::forward<Type>(value));
         return *this;
@@ -327,7 +331,7 @@ public:
      * otherwise.
      */
     [[nodiscard]] bool has_value(const type_info &req) const noexcept {
-        return (info() == req);
+        return (underlying_type == req.hash());
     }
 
     /**
@@ -337,11 +341,9 @@ public:
      * @return False if the wrapper does not contain the expected type, true
      * otherwise.
      */
-    template<typename Type>
+    template<cvref_unqualified Type>
     [[nodiscard]] bool has_value() const noexcept {
-        static_assert(std::is_same_v<std::remove_const_t<Type>, Type>, "Invalid type");
-        // it could be a call across boundaries, but still for the same type
-        return (vtable == &basic_vtable<Type>) || has_value(type_id<Type>());
+        return (underlying_type == type_hash<Type>::value());
     }
 
     /**
@@ -350,11 +352,6 @@ public:
      */
     [[nodiscard]] const type_info &info() const noexcept {
         return *static_cast<const type_info *>(vtable(request::info, *this, nullptr));
-    }
-
-    /*! @copydoc info */
-    [[deprecated("use ::info instead")]] [[nodiscard]] const type_info &type() const noexcept {
-        return info();
     }
 
     /**
@@ -437,8 +434,7 @@ public:
      * @return True in case of success, false otherwise.
      */
     bool assign(const basic_any &other) {
-        // it could be a call across boundaries, but still for the same type
-        if(other && (mode != any_policy::cref) && ((vtable == other.vtable) || has_value(other.info()))) {
+        if(other && (mode != any_policy::cref) && (underlying_type == other.underlying_type)) {
             return (vtable(request::assign, *this, other.data()) != nullptr);
         }
 
@@ -448,8 +444,7 @@ public:
     /*! @copydoc assign */
     // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
     bool assign(basic_any &&other) {
-        // it could be a call across boundaries, but still for the same type
-        if(other && (mode != any_policy::cref) && ((vtable == other.vtable) || has_value(other.info()))) {
+        if(other && (mode != any_policy::cref) && (underlying_type == other.underlying_type)) {
             return (other.mode == any_policy::cref) ? (vtable(request::assign, *this, std::as_const(other).data()) != nullptr) : (vtable(request::transfer, *this, other.data()) != nullptr);
         }
 
@@ -476,21 +471,11 @@ public:
      * @return False if the two objects differ in their content, true otherwise.
      */
     [[nodiscard]] bool operator==(const basic_any &other) const noexcept {
-        // it could be a call across boundaries, but still for the same type
-        if(other && ((vtable == other.vtable) || has_value(other.info()))) {
+        if(other && (underlying_type == other.underlying_type)) {
             return (vtable(request::compare, *this, other.data()) != nullptr);
         }
 
         return (!*this && !other);
-    }
-
-    /**
-     * @brief Checks if two wrappers differ in their content.
-     * @param other Wrapper with which to compare.
-     * @return True if the two objects differ in their content, false otherwise.
-     */
-    [[nodiscard]] bool operator!=(const basic_any &other) const noexcept {
-        return !(*this == other);
     }
 
     /**
@@ -499,7 +484,18 @@ public:
      */
     [[nodiscard]] basic_any as_ref() noexcept {
         basic_any other = std::as_const(*this).as_ref();
-        other.mode = (mode == any_policy::cref ? any_policy::cref : any_policy::ref);
+
+        switch(mode) {
+            using enum any_policy;
+        case cref:
+        case empty:
+            other.mode = mode;
+            break;
+        default:
+            other.mode = any_policy::ref;
+            break;
+        }
+
         return other;
     }
 
@@ -508,6 +504,7 @@ public:
         basic_any other{};
         other.instance = data();
         other.vtable = vtable;
+        other.underlying_type = underlying_type;
         other.mode = any_policy::cref;
         return other;
     }
@@ -531,6 +528,7 @@ public:
 private:
     vtable_type *vtable{};
     deleter_type *deleter{};
+    id_type underlying_type{};
     any_policy mode{};
 };
 
@@ -562,7 +560,7 @@ template<typename Type, std::size_t Len, std::size_t Align>
 template<typename Type, std::size_t Len, std::size_t Align>
 // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
 [[nodiscard]] std::remove_const_t<Type> any_cast(basic_any<Len, Align> &&data) noexcept {
-    if constexpr(std::is_copy_constructible_v<std::remove_const_t<std::remove_reference_t<Type>>>) {
+    if constexpr(std::is_copy_constructible_v<std::remove_cvref_t<Type>>) {
         if(auto *const instance = any_cast<std::remove_reference_t<Type>>(&data); instance) {
             return static_cast<Type>(std::move(*instance));
         }

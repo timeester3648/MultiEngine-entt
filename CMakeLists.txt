@@ -1,6 +1,6 @@
 # EnTT
 
-cmake_minimum_required(VERSION 3.15.7)
+cmake_minimum_required(VERSION 3.28)
 
 # Read project version
 
@@ -25,7 +25,7 @@ endif()
     
 message(VERBOSE "*")
 message(VERBOSE "* ${PROJECT_NAME} v${PROJECT_VERSION} (${CMAKE_BUILD_TYPE})")
-message(VERBOSE "* Copyright (c) 2017-2025 Michele Caini <michele.caini@gmail.com>")
+message(VERBOSE "* Copyright (c) 2017-2026 Michele Caini <michele.caini@gmail.com>")
 message(VERBOSE "*")
 
 # CMake stuff
@@ -93,7 +93,7 @@ target_include_directories(
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_compile_features(EnTT INTERFACE cxx_std_17)
+target_compile_features(EnTT INTERFACE cxx_std_20)
 
 if(ENTT_HAS_LIBCPP)
     target_compile_options(EnTT BEFORE INTERFACE -stdlib=libc++)
@@ -105,8 +105,14 @@ if(ENTT_HAS_SANITIZER)
 endif()
 
 if(ENTT_CLANG_TIDY_EXECUTABLE)
-    set(CMAKE_CXX_CLANG_TIDY "${ENTT_CLANG_TIDY_EXECUTABLE};--config-file=${EnTT_SOURCE_DIR}/.clang-tidy;--header-filter=${EnTT_SOURCE_DIR}/src/entt/.*")
-endif()
+    set(ENTT_CLANG_TIDY_OPTIONS ";--config-file=${EnTT_SOURCE_DIR}/.clang-tidy;--header-filter=${EnTT_SOURCE_DIR}/src/entt/.*")
+
+    if(MSVC AND NOT (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang"))
+        set(ENTT_CLANG_TIDY_OPTIONS "${ENTT_CLANG_TIDY_OPTIONS};--extra-arg=/EHsc;--extra-arg=/wd4996")
+    endif()
+
+    set(CMAKE_CXX_CLANG_TIDY "${ENTT_CLANG_TIDY_EXECUTABLE}${ENTT_CLANG_TIDY_OPTIONS}")
+ endif()
 
 # Add EnTT goodies
 
@@ -125,9 +131,9 @@ if(ENTT_INCLUDE_HEADERS)
         container/fwd.hpp
         core/algorithm.hpp
         core/any.hpp
-        core/attribute.h
         core/bit.hpp
         core/compressed_pair.hpp
+        core/concepts.hpp
         core/enum.hpp
         core/family.hpp
         core/fwd.hpp
@@ -189,6 +195,9 @@ if(ENTT_INCLUDE_HEADERS)
         signal/emitter.hpp
         signal/fwd.hpp
         signal/sigh.hpp
+        stl/functional.hpp
+        stl/iterator.hpp
+        stl/memory.hpp
         tools/davey.hpp
         entt.hpp
         fwd.hpp
@@ -325,7 +334,7 @@ option(ENTT_BUILD_TESTBED "Enable building testbed." OFF)
 
 if(ENTT_BUILD_TESTING OR ENTT_BUILD_TESTBED)
     set(ENTT_ID_TYPE std::uint32_t CACHE STRING "Type of identifiers to use for tests and testbed")
-    set(ENTT_CXX_STD cxx_std_17 CACHE STRING "C++ standard revision to use for tests and testbed")
+    set(ENTT_CXX_STD cxx_std_20 CACHE STRING "C++ standard revision to use for tests and testbed")
 
     # Tests and tesetbed do not work together because SDL gets confused with EnTT tests
     if(ENTT_BUILD_TESTING)

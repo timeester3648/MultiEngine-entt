@@ -9,47 +9,47 @@
 #include <entt/meta/meta.hpp>
 #include <entt/meta/range.hpp>
 #include <entt/meta/resolve.hpp>
-#include "../../common/boxed_type.h"
 #include "../../common/config.h"
 #include "../../common/meta_traits.h"
-
-struct base {
-    char member{};
-};
-
-struct clazz: base {
-    clazz(int val)
-        : value{val} {}
-
-    [[nodiscard]] explicit operator int() const noexcept {
-        return get_int();
-    }
-
-    void set_int(int val) noexcept {
-        value = val;
-    }
-
-    void set_boxed_int(test::boxed_int val) noexcept {
-        value = val.value;
-    }
-
-    [[nodiscard]] int get_int() const noexcept {
-        return value;
-    }
-
-    [[nodiscard]] static std::string to_string(const clazz &instance) {
-        return std::to_string(instance.get_int());
-    }
-
-    [[nodiscard]] static clazz from_string(const std::string &value) {
-        return clazz{std::stoi(value)};
-    }
-
-private:
-    int value{};
-};
+#include "../../common/value_type.h"
 
 struct MetaFactory: ::testing::Test {
+    struct base {
+        char member{};
+    };
+
+    struct clazz: base {
+        clazz(int val)
+            : value{val} {}
+
+        [[nodiscard]] explicit operator int() const noexcept {
+            return get_int();
+        }
+
+        void set_int(int val) noexcept {
+            value = val;
+        }
+
+        void set_boxed_int(test::boxed_int val) noexcept {
+            value = val.value;
+        }
+
+        [[nodiscard]] int get_int() const noexcept {
+            return value;
+        }
+
+        [[nodiscard]] static std::string to_string(const clazz &instance) {
+            return std::to_string(instance.get_int());
+        }
+
+        [[nodiscard]] static clazz from_string(const std::string &value) {
+            return clazz{std::stoi(value)};
+        }
+
+    private:
+        int value{};
+    };
+
     void TearDown() override {
         entt::meta_reset();
     }
@@ -124,7 +124,7 @@ TEST_F(MetaFactory, Base) {
     ASSERT_NE(range.begin(), range.end());
     ASSERT_EQ(std::distance(range.begin(), range.end()), 1);
     ASSERT_EQ(range.begin()->first, entt::type_id<base>().hash());
-    ASSERT_EQ(range.begin()->second.info(), entt::type_id<base>());
+    ASSERT_EQ(range.begin()->second.type().info(), entt::type_id<base>());
 }
 
 TEST_F(MetaFactory, Conv) {
@@ -275,6 +275,24 @@ TEST_F(MetaFactory, DataOverwrite) {
     ASSERT_FALSE(type.data("value"_hs).is_const());
 }
 
+TEST_F(MetaFactory, DataTypeNameClash) {
+    using namespace entt::literals;
+
+    const auto value = 2;
+    entt::meta_factory<base> factory{};
+    const auto member = entt::type_id<base>().hash();
+    entt::meta_data data = entt::resolve<base>().data(member);
+
+    ASSERT_FALSE(data);
+
+    factory.data<&base::member>(member).custom<int>(value);
+    data = entt::resolve<base>().data(member);
+
+    ASSERT_TRUE(data);
+    ASSERT_NE(static_cast<const int *>(data.custom()), nullptr);
+    ASSERT_EQ(static_cast<int>(data.custom()), value);
+}
+
 TEST_F(MetaFactory, Func) {
     using namespace entt::literals;
 
@@ -320,6 +338,24 @@ TEST_F(MetaFactory, FuncOverload) {
     ASSERT_EQ(instance.get_int(), 3);
 }
 
+TEST_F(MetaFactory, FuncTypeNameClash) {
+    using namespace entt::literals;
+
+    const auto value = 2;
+    entt::meta_factory<clazz> factory{};
+    const auto member = entt::type_id<base>().hash();
+    entt::meta_func func = entt::resolve<base>().func(member);
+
+    ASSERT_FALSE(func);
+
+    factory.func<&clazz::get_int>(member).custom<int>(value);
+    func = entt::resolve<clazz>().func(member);
+
+    ASSERT_TRUE(func);
+    ASSERT_NE(static_cast<const int *>(func.custom()), nullptr);
+    ASSERT_EQ(static_cast<int>(func.custom()), value);
+}
+
 TEST_F(MetaFactory, Traits) {
     using namespace entt::literals;
 
@@ -351,6 +387,23 @@ TEST_F(MetaFactory, Traits) {
     ASSERT_EQ(type.data("member"_hs).traits<test::meta_traits>(), test::meta_traits::one);
     ASSERT_EQ(type.func("func"_hs).traits<test::meta_traits>(), test::meta_traits::two);
     ASSERT_EQ(type.func("func"_hs).next().traits<test::meta_traits>(), test::meta_traits::three);
+
+    entt::meta_factory<clazz>{}
+        .traits(test::meta_traits::one, true)
+        .data<&base::member>("member"_hs)
+        .traits(test::meta_traits::one | test::meta_traits::three, true)
+        .func<&clazz::set_int>("func"_hs)
+        .traits(test::meta_traits::one | test::meta_traits::three, true)
+        .func<&clazz::set_boxed_int>("func"_hs)
+        .traits(test::meta_traits::all, true);
+
+    // traits are copied and never refreshed
+    type = entt::resolve<clazz>();
+
+    ASSERT_EQ(type.traits<test::meta_traits>(), test::meta_traits::three);
+    ASSERT_EQ(type.data("member"_hs).traits<test::meta_traits>(), test::meta_traits::none);
+    ASSERT_EQ(type.func("func"_hs).traits<test::meta_traits>(), test::meta_traits::two);
+    ASSERT_EQ(type.func("func"_hs).next().traits<test::meta_traits>(), test::meta_traits::none);
 }
 
 TEST_F(MetaFactory, Custom) {

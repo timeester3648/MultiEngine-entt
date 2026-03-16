@@ -5,13 +5,15 @@
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage)
 
-#if defined(__cpp_exceptions) && !defined(ENTT_NOEXCEPTION)
-#    define ENTT_CONSTEXPR
+#ifdef ENTT_USE_STL
+#    define ENTT_FORCE_STL
+#endif
+
+#if defined(__cpp_exceptions) && !defined(ENTT_NO_EXCEPTION)
 #    define ENTT_THROW throw
 #    define ENTT_TRY try
 #    define ENTT_CATCH catch(...)
 #else
-#    define ENTT_CONSTEXPR constexpr // use only with throwing functions (waiting for C++20)
 #    define ENTT_THROW
 #    define ENTT_TRY if(true)
 #    define ENTT_CATCH if(false)
@@ -92,6 +94,32 @@
 #        define ENTT_PRETTY_FUNCTION __FUNCSIG__
 #        define ENTT_PRETTY_FUNCTION_PREFIX '<'
 #        define ENTT_PRETTY_FUNCTION_SUFFIX '>'
+#    endif
+#endif
+
+#ifndef ENTT_EXPORT
+#    if defined _WIN32 || defined __CYGWIN__ || defined _MSC_VER
+#        define ENTT_EXPORT __declspec(dllexport)
+#        define ENTT_IMPORT __declspec(dllimport)
+#        define ENTT_HIDDEN
+#    elif defined __GNUC__ && __GNUC__ >= 4
+#        define ENTT_EXPORT __attribute__((visibility("default")))
+#        define ENTT_IMPORT __attribute__((visibility("default")))
+#        define ENTT_HIDDEN __attribute__((visibility("hidden")))
+#    else /* Unsupported compiler */
+#        define ENTT_EXPORT
+#        define ENTT_IMPORT
+#        define ENTT_HIDDEN
+#    endif
+#endif
+
+#ifndef ENTT_API
+#    if defined ENTT_API_EXPORT
+#        define ENTT_API ENTT_EXPORT
+#    elif defined ENTT_API_IMPORT
+#        define ENTT_API ENTT_IMPORT
+#    else /* No API */
+#        define ENTT_API
 #    endif
 #endif
 
